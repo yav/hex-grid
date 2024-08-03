@@ -4,7 +4,7 @@ function main() {
   const grid = new Grid<number>("vertex_up")
   const hex = grid.getHex()
   hex.setRadius(64)
-  hex.setEdge(2)
+  hex.setEdge(10)
   const app = document.getElementById("app")
   if (app === null) return
   app.style.position = "relative"

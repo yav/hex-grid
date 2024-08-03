@@ -2,6 +2,10 @@
 const neighbourTable = [ [1, 0], [0, 1], [-1, 1], [-1, 0], [0,-1], [1,-1] ]
 
 
+export type Orientation = "vertex_up" | "edge_up"
+
+
+
 // Directions
 export class Dir  {
   number: number /* 0 .. 5 */
@@ -19,6 +23,20 @@ export class Dir  {
   
   clockwise        (n: number = 1) { this.number += n; this.normalize() }
   counter_clockwise(n: number = 1) { this.number -= n; this.normalize() }
+
+  relative_unit(o: Orientation, th0: number): [number, number] {
+    let th = th0 - Math.PI * this.number / 3
+    if (o === "edge_up") th -= Math.PI / 2
+    return [ Math.cos(th), Math.sin(th) ]
+  }
+
+  edge_unit(o: Orientation): [number, number] {
+    return this.relative_unit(o, 0)
+  }
+
+  vertex_unit(o: Orientation): [number, number] {
+    return this.relative_unit(o, Math.PI / 6)
+  }
 }
 
 export function *directions(): Generator<Dir> {
@@ -29,19 +47,16 @@ export function *directions(): Generator<Dir> {
 
 
 // Names of edge directions in a vertex-up orientation
-export const vertexUp = 
-  { E: new Dir(0), SE: new Dir(1), SW: new Dir(2),
-    W: new Dir(3), NW: new Dir(4), NE: new Dir(5)
+export const dirName =
+  { "vertex_up": // vertex_up
+      { E: new Dir(0), SE: new Dir(1), SW: new Dir(2),
+        W: new Dir(3), NW: new Dir(4), NE: new Dir(5)
+      } 
+  , "edge_up":
+     { S: new Dir(0), SW: new Dir(1), NW: new Dir(2),
+       N: new Dir(3), NE: new Dir(4), SE: new Dir(5)
+     }
   }
-
-// Names of edge directions in an edge-up orientation
-export const edgeUp = 
-  { S: new Dir(0), SW: new Dir(1), NW: new Dir(2),
-    N: new Dir(3), NE: new Dir(4), SE: new Dir(5)
-  }
-
-
-
 
 
 
