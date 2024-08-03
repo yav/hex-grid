@@ -1,88 +1,191 @@
 
 const neighbourTable = [ [1, 0], [0, 1], [-1, 1], [-1, 0], [0,-1], [1,-1] ]
 
-const vertexUp: { [name: string]: Dir } = 
-  { "E":  0, "SE": 1, "SW": 2, "W": 3, "NW": 4, "NE": 5 }
 
-const edgeUp: { [name: string]: Dir } = 
-  { "S":  0, "SW": 1, "NW": 2, "N": 3, "NE": 4, "SE": 5 }
+// Directions
+export class Dir  {
+  number: number /* 0 .. 5 */
 
-export type FLoc = [ number, number ]
-export type ELoc = [ FLoc, number /* 0..2 */ ]
-export type VLoc = [ FLoc, number /* 0..1 */ ] 
-export type Dir  = number /* 0 .. 5 */
-
-
-
-export const origin: FLoc = [0,0]
-
-
-export function turn_clockwise(d: Dir, n: number = 1): Dir {
-  return (d + n) % 6
+  constructor(n: number = 0) {
+    this.number = n
+    this.normalize()
+  }
+  
+  // Set the direction in the range 0 .. 5, using modulo arithmetic.
+  normalize() {
+    this.number %= 6
+    if (this.number < 0) this.number = 6 - this.number
+  }
+  
+  clockwise        (n: number = 1) { this.number += n; this.normalize() }
+  counter_clockwise(n: number = 1) { this.number -= n; this.normalize() }
 }
 
-export function turn_counter_clockwise(d: Dir, n: number = 1): Dir {
-  return turn_clockwise(d, 6 - n % 6)
-}
-
-// The location `n` steps in direction `dir` from `loc`.
-export function advance([x,y]: FLoc, dir: Dir, n: number = 1): FLoc {
-  const [dx,dy] = neighbourTable[dir]
-  return [x+n*dx,y+n*dy]
-}
-
-// Edge on a face in the given direction
-export function edge_of_face(f: FLoc, d: Dir): ELoc {
-  if (d < 3) return [ f, d ]
-  return [ advance(f,d), d - 3 ]
-}
-
-// Vertex on a face in the given direction
-export function vertex_of_face(f: FLoc, d: Dir): VLoc {
-  if (d < 2) return [ f, d ]
-  const f1 = advance(f,d)
-  const d1 = d - 2
-  if (d < 4) return [ f1, d1 ]
-  return [ advance(f1,d1), d1 - 2 ]
-}
-
-export function vertex_of_edge([f,d]: ELoc, n: number): VLoc {
-  return vertex_of_face(f,d+n)
+export function *directions(): Generator<Dir> {
+  for (let i = 0; i < 6; ++i) {
+    yield new Dir(i)
+  }
 }
 
 
-export function edges_of_face(f: FLoc): ELoc[] {
-  const res = []
-  for (let d = 0; d < 6; ++d)
-     res.push(edge_of_face(f,d))
-  return res
-}
+// Names of edge directions in a vertex-up orientation
+export const vertexUp = 
+  { E: new Dir(0), SE: new Dir(1), SW: new Dir(2),
+    W: new Dir(3), NW: new Dir(4), NE: new Dir(5)
+  }
 
-export function vertices_of_face(f: FLoc): VLoc[] {
-  const res = []
-  for (let d = 0; d < 6; ++d)
-     res.push(vertex_of_face(f,d))
-  return res
-}
+// Names of edge directions in an edge-up orientation
+export const edgeUp = 
+  { S: new Dir(0), SW: new Dir(1), NW: new Dir(2),
+    N: new Dir(3), NE: new Dir(4), SE: new Dir(5)
+  }
 
 
-export function faces_of_edge([f,d]: ELoc): [FLoc, FLoc] {
-  return [ advance(f,d), f ]
+
+
+
+
+
+
+
+
+// Face locations
+export class FLoc {
+  x: number
+  y: number
+
+  constructor(x: number = 0, y: number = 0) {
+    this.x = x
+    this.y = y
+  }
+
+  // Move the location `n` steps in direction `dir` from this.
+  advance(dir: Dir, n: number = 1) {
+    const [dx,dy] = neighbourTable[dir.number]
+    this.x += n * dx
+    this.y += n * dy
+  }
+
+  // The edges neighbouring this face (6)
+  *edges(): Generator<ELoc> {
+    for (const dir of directions())
+       yield new ELoc(this,dir)
+  }
+
+  // The vertices touching this face (6)
+  *vertices(): Generator<VLoc> {
+    for (const dir of directions())
+      yield vloc_from_face(this,dir)
+  }
+  
 }
 
-export function vertices_of_edge([f,d]: ELoc): [VLoc,VLoc] {
-  return [ vertex_of_face(f,d), vertex_of_face(f,d+1) ]
+
+
+// Edge locations
+export class ELoc {
+  face:   FLoc
+  number: number /* 0..2 */
+
+  constructor(face: FLoc, dir: Dir) {
+    this.face   = structuredClone(face)
+    this.number = dir.number
+    if (dir.number >= 3) {
+      this.face.advance(dir)
+      this.number -= 3
+    }
+  }
+
+
+  // The faces touching this edge (2)
+  *faces(): Generator<FLoc> {
+      const f1 = structuredClone(this.face)
+      f1.advance(new Dir(this.number))
+      yield f1
+      yield structuredClone(this.face)
+    }
+    
+  // The vertices touching this edge (2)
+  *vertices(): Generator<VLoc> {
+    const dir = new Dir(this.number)
+    yield vloc_from_face(this.face, dir)
+    dir.clockwise()
+    yield vloc_from_face(this.face, dir)
+  }
+    
+
 }
 
-export function edges_of_vertex([f,d]: VLoc): [ELoc,ELoc,ELoc] {
-  const d1 = turn_counter_clockwise(d)
-  const f1 = advance(f,d1)
-  if (d == 0) return [ [f1,1], [f1,2], [f,0] ]
-  return [ [f,0], [f,1], [f1,2] ]
+
+
+// Vertex locations
+export class VLoc {
+  face:   FLoc = new FLoc()
+  number: number = 0 /* 0..1 */
+
+  // The vertex in the given direction of the face.
+  // XXX: vertices and edges use different direction types, does it matter?
+  setFromFace (face: FLoc, dir: Dir) {
+    this.face   = structuredClone(face)
+    this.number = dir.number
+
+    while (this.number >= 2) {
+      this.face.advance(dir)
+      dir.number -= 2
+      this.number = dir.number
+    }
+  }
+
+  // The vertex at the end of the edge.
+  // Vertex 0 is the at the start of the edge,
+  // when the edge is facing clockwise.
+  setFromEdge (edge: ELoc, n: number) {
+    this.setFromFace(edge.face, new Dir(this.number + n))
+  }
+
+
+  // Faces meeting at a vertex (3)
+  *faces(): Generator<FLoc> {
+    const f1 = structuredClone(this.face)
+    yield f1
+    const f2 = structuredClone(this.face)
+    const dir = new Dir(this.number)
+    f2.advance(dir)
+    yield f2
+    const f3 = structuredClone(f2)
+    dir.counter_clockwise()
+    f3.advance(dir)
+    yield f3
+  }
+
+  // Edges meeting at this vertex (3)
+  *edges(): Generator<ELoc> {
+    if (this.number === 0) {
+      const f2 = structuredClone(this.face)
+      f2.advance(new Dir(5))
+      yield new ELoc(this.face, new Dir(0))
+      yield new ELoc(f2, new Dir(2))
+      yield new ELoc(f2, new Dir(1))
+    } else {
+      const f2 = structuredClone(this.face)
+      f2.advance(new Dir(0))
+      yield new ELoc(this.face, new Dir(2)) 
+      yield new ELoc(f2, new Dir(2))
+      yield new ELoc(this.face, new Dir(1))
+    }
+  }
 }
 
-// Faces meeting at a vertex
-export function faces_of_vertex([f,d]: VLoc): [FLoc,FLoc,FLoc] {
-  const f1 = advance(f,d)
-  return [ f, f1, advance(f1,turn_counter_clockwise(d))  ]
+export function vloc_from_face(face: FLoc, dir: Dir): VLoc {
+  const v = new VLoc()
+  v.setFromFace(face,dir)
+  return v
 }
+
+export function vloc_fromedge(edge: ELoc, n: number): VLoc {
+  const v = new VLoc()
+  v.setFromEdge(edge,n)
+  return v
+}
+
+
