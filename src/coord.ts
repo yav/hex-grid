@@ -14,6 +14,8 @@ export class Dir  {
     this.number = n
     this.normalize()
   }
+
+  clone(): Dir { const dir = new Dir(); dir.number = this.number; return dir }
   
   // Set the direction in the range 0 .. 5, using modulo arithmetic.
   normalize() {
@@ -25,8 +27,8 @@ export class Dir  {
   counter_clockwise(n: number = 1) { this.number -= n; this.normalize() }
 
   relative_unit(o: Orientation, th0: number): [number, number] {
-    let th = th0 - Math.PI * this.number / 3
-    if (o === "edge_up") th -= Math.PI / 2
+    let th = Math.PI * this.number / 3 - th0
+    if (o === "edge_up") th += Math.PI / 2
     return [ Math.cos(th), Math.sin(th) ]
   }
 
@@ -74,6 +76,13 @@ export class FLoc {
     this.y = y
   }
 
+  clone(): FLoc {
+    const o = new FLoc();
+    o.x = this.x
+    o.y = this.y
+    return o
+  }
+
   // Move the location `n` steps in direction `dir` from this.
   advance(dir: Dir, n: number = 1) {
     const [dx,dy] = neighbourTable[dir.number]
@@ -103,7 +112,7 @@ export class ELoc {
   number: number /* 0..2 */
 
   constructor(face: FLoc, dir: Dir) {
-    this.face   = structuredClone(face)
+    this.face   = face.clone()
     this.number = dir.number
     if (dir.number >= 3) {
       this.face.advance(dir)
@@ -111,13 +120,14 @@ export class ELoc {
     }
   }
 
+  clone(): ELoc { return new ELoc(this.face, new Dir(this.number)) }
 
   // The faces touching this edge (2)
   *faces(): Generator<FLoc> {
-      const f1 = structuredClone(this.face)
+      const f1 = this.face.clone()
       f1.advance(new Dir(this.number))
       yield f1
-      yield structuredClone(this.face)
+      yield this.face.clone()
     }
     
   // The vertices touching this edge (2)
@@ -138,10 +148,17 @@ export class VLoc {
   face:   FLoc = new FLoc()
   number: number = 0 /* 0..1 */
 
+  clone(): VLoc {
+    const o = new VLoc()
+    o.face = this.face.clone()
+    o.number = this.number
+    return o
+  }
+
   // The vertex in the given direction of the face.
   // XXX: vertices and edges use different direction types, does it matter?
   setFromFace (face: FLoc, dir: Dir) {
-    this.face   = structuredClone(face)
+    this.face   = face.clone()
     this.number = dir.number
 
     while (this.number >= 2) {
@@ -161,13 +178,13 @@ export class VLoc {
 
   // Faces meeting at a vertex (3)
   *faces(): Generator<FLoc> {
-    const f1 = structuredClone(this.face)
+    const f1 = this.face.clone()
     yield f1
-    const f2 = structuredClone(this.face)
+    const f2 = this.face.clone()
     const dir = new Dir(this.number)
     f2.advance(dir)
     yield f2
-    const f3 = structuredClone(f2)
+    const f3 = this.face.clone()
     dir.counter_clockwise()
     f3.advance(dir)
     yield f3
@@ -176,13 +193,13 @@ export class VLoc {
   // Edges meeting at this vertex (3)
   *edges(): Generator<ELoc> {
     if (this.number === 0) {
-      const f2 = structuredClone(this.face)
+      const f2 = this.face.clone()
       f2.advance(new Dir(5))
       yield new ELoc(this.face, new Dir(0))
       yield new ELoc(f2, new Dir(2))
       yield new ELoc(f2, new Dir(1))
     } else {
-      const f2 = structuredClone(this.face)
+      const f2 = this.face.clone()
       f2.advance(new Dir(0))
       yield new ELoc(this.face, new Dir(2)) 
       yield new ELoc(f2, new Dir(2))
