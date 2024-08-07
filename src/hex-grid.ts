@@ -62,6 +62,22 @@ export class Grid {
     this.y_dy = l * y_dy
   }
 
+  isVertexUp(): boolean { return this.orientation === "vertex_up" }
+
+  faceBoundingBox(): [number, number] {
+    const vup = this.orientation === "vertex_up"
+    const w   = vup? this.inner_diameter : this.outer_diameter
+    const h   = vup? this.outer_diameter : this.inner_diameter
+    return [w,h]
+  }
+
+  edgeBoundingBox(): [number, number] {
+    const w = this.spacing
+    const h = this.outer_diameter/2 + w * root_3
+    return [w,h]
+  }
+  
+
   faceLoc(face: FLoc): [number, number] {
     const x = face.x
     const y = face.y

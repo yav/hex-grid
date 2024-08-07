@@ -1,26 +1,14 @@
 import { Grid } from "./hex-grid.ts"
 import { FLoc, ELoc, VLoc } from "./coord.ts"
+import { newHexShape, newEdgeShape } from "./shapes.ts"
 
 
 
 function getHexDOM(grid: Grid, loc: FLoc): HTMLElement {
-  const dom = document.createElement("div")
+  const dom = newHexShape(grid, loc)
   const style = dom.style
-  style.position = "absolute"
+
  
-  const vup = grid.orientation === "vertex_up"
-  const w = vup? grid.inner_diameter : grid.outer_diameter
-  const h = vup? grid.outer_diameter : grid.inner_diameter
-
-  style.width = grid.toUnit(w)
-  style.height = grid.toUnit(h)
-
-  style.clipPath = vup
-                 ? "polygon(0 25%, 50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%)"
-                 : "polygon(0 50%, 25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%)"
-  const [l,t] = grid.faceLoc(loc)
-  style.left = grid.toUnit(l - w/2)
-  style.top = grid.toUnit(t - h/2)
   style.color = "black"
   style.textAlign = "center"
   dom.textContent = loc.x + ", " + loc.y
@@ -32,20 +20,13 @@ function getHexDOM(grid: Grid, loc: FLoc): HTMLElement {
 }
 
 function getEdge(grid: Grid, loc: ELoc): HTMLElement {
-  const dom = document.createElement("div")
+  const dom = newEdgeShape(grid,loc)
   const style = dom.style
   style.position = "absolute"
 
-  const sz = grid.spacing
-  style.width = grid.toUnit(sz)
-  style.height = grid.toUnit(sz)
   style.backgroundColor = "orange"
-  const [x,y] = grid.edgeLoc(loc)
 
-  style.left = grid.toUnit(x - sz/2)
-  style.top = grid.toUnit(y - sz/2)
-  style.clipPath = "circle(30%)"
-  style.zIndex = "2"
+  style.zIndex = "1"
   dom.setAttribute("title", loc.face.x + ", " + loc.face.y + ", " + loc.number )
   return dom
 }
@@ -74,9 +55,9 @@ function getVert(grid: Grid, loc: VLoc): HTMLElement {
 
 function main() {
   const grid = new Grid()
-  grid.setOrientation("vertex_up")  
+  grid.setOrientation("edge_up")  
   grid.setInnerDiameter(64)
-  grid.setSpacing(10)
+  grid.setSpacing(32)
 
   const app = document.getElementById("app")
   if (app === null) return
