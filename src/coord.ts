@@ -4,7 +4,9 @@ const neighbourTable = [ [1, 0], [0, 1], [-1, 1], [-1, 0], [0,-1], [1,-1] ]
 
 export type Orientation = "vertex_up" | "edge_up"
 
-
+export function otherOrientation(x: Orientation): Orientation {
+  return x === "vertex_up"? "edge_up" : "vertex_up"
+}
 
 // Directions
 export class Dir  {
@@ -20,7 +22,7 @@ export class Dir  {
   // Set the direction in the range 0 .. 5, using modulo arithmetic.
   normalize() {
     this.number %= 6
-    if (this.number < 0) this.number = 6 - this.number
+    if (this.number < 0) this.number = 6 + this.number
   }
   
   clockwise        (n: number = 1) { this.number += n; this.normalize() }
@@ -47,21 +49,21 @@ export function *directions(): Generator<Dir> {
   }
 }
 
+export type DirName = "N" | "NE" | "E" | "SE" | "S" | "SW" | "W" | "NW"
 
 // Names of edge directions in a vertex-up orientation
-export const dirName =
-  { "vertex_up": // vertex_up
+export const edgeDir =
+  { vertex_up:
       { E: new Dir(0), SE: new Dir(1), SW: new Dir(2),
-        W: new Dir(3), NW: new Dir(4), NE: new Dir(5)
-      } 
-  , "edge_up":
+        W: new Dir(3), NW: new Dir(4), NE: new Dir(5),
+        N: new Dir(0), S: new Dir(0) // just to make types work
+      }
+  , edge_up:
      { S: new Dir(0), SW: new Dir(1), NW: new Dir(2),
-       N: new Dir(3), NE: new Dir(4), SE: new Dir(5)
+       N: new Dir(3), NE: new Dir(4), SE: new Dir(5),
+       E: new Dir(0), W: new Dir(0)
      }
   }
-
-
-
 
 
 
@@ -88,6 +90,14 @@ export class FLoc {
     const [dx,dy] = neighbourTable[dir.number]
     this.x += n * dx
     this.y += n * dy
+  }
+
+  edge(d: Dir): ELoc { return new ELoc(this,d)  }
+
+  vertex(d: Dir): VLoc {
+    const v = new VLoc();
+    v.setFromFace(this,d)
+    return v
   }
 
   // The edges neighbouring this face (6)
@@ -155,8 +165,8 @@ export class VLoc {
     return o
   }
 
+  // XXX
   // The vertex in the given direction of the face.
-  // XXX: vertices and edges use different direction types, does it matter?
   setFromFace (face: FLoc, dir: Dir) {
     this.face   = face.clone()
     this.number = dir.number

@@ -1,4 +1,5 @@
-import { Orientation, Dir,  FLoc, ELoc, VLoc } from "./coord.ts"
+import { Orientation, Dir,  FLoc, ELoc, VLoc, DirName,
+            edgeDir, otherOrientation } from "./coord.ts"
 
 const root_3 = Math.sqrt(3)
 
@@ -64,6 +65,10 @@ export class Grid {
 
   isVertexUp(): boolean { return this.orientation === "vertex_up" }
 
+
+  edgeDir(d: DirName): Dir { return edgeDir[this.orientation][d] }
+  vertexDir(d: DirName): Dir { return edgeDir[otherOrientation(this.orientation)][d] }
+
   faceBoundingBox(): [number, number] {
     const vup = this.orientation === "vertex_up"
     const w   = vup? this.inner_diameter : this.outer_diameter
@@ -73,7 +78,7 @@ export class Grid {
 
   edgeBoundingBox(): [number, number] {
     const w = this.spacing
-    const h = this.outer_diameter/2 + w * root_3
+    const h = this.outer_diameter/2 + w * root_3/3
     return [w,h]
   }
   

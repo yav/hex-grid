@@ -1,5 +1,5 @@
 import { Grid } from "./hex-grid.ts"
-import { FLoc, ELoc, VLoc } from "./coord.ts"
+import { FLoc, ELoc, VLoc, Dir } from "./coord.ts"
 import { newHexShape, newEdgeShape } from "./shapes.ts"
 
 
@@ -57,7 +57,7 @@ function main() {
   const grid = new Grid()
   grid.setOrientation("edge_up")  
   grid.setInnerDiameter(64)
-  grid.setSpacing(32)
+  grid.setSpacing(5)
 
   const app = document.getElementById("app")
   if (app === null) return
@@ -65,13 +65,13 @@ function main() {
   
 
   let loc = new FLoc()
+  loc.advance(grid.edgeDir("SE"))
   function draw() {
     const dom = getHexDOM(grid,loc)
     app?.append(dom)
     let count = 0;
-    for (const v of loc.vertices()) {
+    for (const v of [loc.vertex(grid.vertexDir("NE"))]) {
       if (count > 2) break
-      console.log(v)
       const ve = getVert(grid, v)
       app?.append(ve)
       ++count
@@ -80,13 +80,14 @@ function main() {
     for (const e of loc.edges()) {
       if (count > 3) break
       const ve = getEdge(grid, e)
+      ve.style.backgroundColor = ["orange","pink","cyan"][e.number]
       app?.append(ve)
       ++count
     }
   }
   draw()
 
-  for (const dir of grid.traverseFaces(11,5,true)) {
+  for (const dir of grid.traverseFaces(1,1,true)) {
       loc.advance(dir)
       draw()
   }
