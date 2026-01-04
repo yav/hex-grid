@@ -23,6 +23,8 @@ export function newHexShape(grid: Grid, loc: FLoc): HTMLElement {
     return dom
   }
 
+// Edges are shaped like a squished hexagon, so that they completely fill up
+// the space between hexagons (so vertices should be drawn on top).
 export function newEdgeShape(grid: Grid, loc: ELoc): HTMLElement {
     const dom = document.createElement("div")
     const style = dom.style
