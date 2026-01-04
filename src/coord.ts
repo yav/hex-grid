@@ -1,5 +1,5 @@
 
-const neighbourTable = [ [1, 0], [0, 1], [-1, 1], [-1, 0], [0,-1], [1,-1] ]
+const neighborTable = [ [1, 0], [0, 1], [-1, 1], [-1, 0], [0,-1], [1,-1] ]
 
 
 export type Orientation = "vertex_up" | "edge_up"
@@ -87,7 +87,7 @@ export class FLoc {
 
   // Move the location `n` steps in direction `dir` from this.
   advance(dir: Dir, n: number = 1) {
-    const [dx,dy] = neighbourTable[dir.number]
+    const [dx,dy] = neighborTable[dir.number]
     this.x += n * dx
     this.y += n * dy
   }
@@ -100,7 +100,7 @@ export class FLoc {
     return v
   }
 
-  // The edges neighbouring this face (6)
+  // The edges neighboring this face (6)
   *edges(): Generator<ELoc> {
     for (const dir of directions())
        yield new ELoc(this,dir)
@@ -165,8 +165,8 @@ export class VLoc {
     return o
   }
 
-  // XXX
-  // The vertex in the given direction of the face.
+  // A vertex on a face.  The direction is that of the
+  // edge starting at the desired vertex and pointing clockwise.
   setFromFace (face: FLoc, dir: Dir) {
     this.face   = face.clone()
     this.number = dir.number
@@ -178,9 +178,8 @@ export class VLoc {
     }
   }
 
-  // The vertex at the end of the edge.
-  // Vertex 0 is the at the start of the edge,
-  // when the edge is facing clockwise.
+  // Get a vertex on this edge: 0 at the start, 1 at end,
+  // assuming that the edge points clockwise.
   setFromEdge (edge: ELoc, n: number) {
     this.setFromFace(edge.face, new Dir(this.number + n))
   }
