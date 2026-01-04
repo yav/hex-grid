@@ -1,5 +1,5 @@
 import { Grid } from "./hex-grid.ts"
-import { FLoc, ELoc } from "./coord.ts"
+import { FLoc, ELoc, VLoc } from "./coord.ts"
 
 export function newHexShape(grid: Grid, loc: FLoc): HTMLElement {
     const dom = document.createElement("div")
@@ -46,8 +46,27 @@ export function newEdgeShape(grid: Grid, loc: ELoc): HTMLElement {
     style.clipPath = "polygon(0 " + pp1 + ", 50% 0, 100% " + pp1 +
                         ", 100% " + pp2 + ", 50% 100%, 0 " + pp2 + ")"
                    
-    
     const deg = (loc.number * 60) + (grid.isVertexUp() ? 0 : 90)
     style.transform = "translate(-50%, -50%) rotate(" + deg + "deg)"
     return dom
+}
+
+
+export function newVertexShapeCirc(grid: Grid, loc: VLoc): HTMLElement {
+  const dom = document.createElement("div")
+  const style = dom.style
+  style.position = "absolute"
+
+  const [w,h] = grid.vertexBoundingBox()
+  style.width = grid.toUnit(w)
+  style.height = grid.toUnit(h)
+
+  const [x,y] = grid.vertexLoc(loc)
+  style.left = grid.toUnit(x)
+  style.top = grid.toUnit(y)
+  
+  style.clipPath = "circle(50%)"
+  style.transform = "translate(-50%,-50%)"
+
+  return dom
 }

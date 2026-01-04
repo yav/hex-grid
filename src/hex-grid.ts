@@ -81,14 +81,20 @@ export class Grid {
     const h = this.outer_diameter/2 + w * root_3/3
     return [w,h]
   }
-  
 
+  vertexBoundingBox(): [number, number] {
+    const sz = 2 * root_3 * this.spacing / 3
+    return [sz,sz]
+  }
+  
+  // Center of hexagon
   faceLoc(face: FLoc): [number, number] {
     const x = face.x
     const y = face.y
     return [ x * this.x_dx + y * this.y_dx, x * this.x_dy + y * this.y_dy ]
   }
 
+  // Center fo edge
   edgeLoc(edge: ELoc): [number, number] {
     const [x,y] = this.faceLoc(edge.face)
     const [dx,dy] = new Dir(edge.number).edge_unit(this.orientation)
@@ -96,6 +102,7 @@ export class Grid {
     return [ x + l * dx, y + l * dy ]
   }
 
+  // Center of vertex
   vertexLoc(vertex: VLoc): [number, number] {
     const [x,y] = this.faceLoc(vertex.face)
     const [dx,dy] = new Dir(vertex.number).vertex_unit(this.orientation)

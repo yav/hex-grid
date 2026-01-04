@@ -1,6 +1,6 @@
 import { Grid } from "./hex-grid.ts"
-import { FLoc, ELoc, VLoc, Dir } from "./coord.ts"
-import { newHexShape, newEdgeShape } from "./shapes.ts"
+import { FLoc, ELoc, VLoc } from "./coord.ts"
+import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
 
 function blueOnHover(dom: HTMLElement) {
   const style = dom.style
@@ -12,8 +12,6 @@ function blueOnHover(dom: HTMLElement) {
 function getHexDOM(grid: Grid, loc: FLoc): HTMLElement {
   const dom = newHexShape(grid, loc)
   const style = dom.style
-
- 
   style.color = "black"
   style.textAlign = "center"
   dom.textContent = loc.x + ", " + loc.y
@@ -25,32 +23,17 @@ function getHexDOM(grid: Grid, loc: FLoc): HTMLElement {
 function getEdge(grid: Grid, loc: ELoc): HTMLElement {
   const dom = newEdgeShape(grid,loc)
   const style = dom.style
-  style.position = "absolute"
-
   style.backgroundColor = "orange"
-  blueOnHover(dom)
-
   style.zIndex = "1"
   dom.setAttribute("title", loc.face.x + ", " + loc.face.y + ", " + loc.number )
+  blueOnHover(dom)
   return dom
 }
 
-
-
 function getVert(grid: Grid, loc: VLoc): HTMLElement {
-  const dom = document.createElement("div")
+  const dom = newVertexShapeCirc(grid, loc)
   const style = dom.style
-  style.position = "absolute"
-
-  const sz = 2 * Math.sqrt(3) * grid.spacing / 3
-  style.width = grid.toUnit(sz)
-  style.height = grid.toUnit(sz)
   style.backgroundColor = "black"
-  const [x,y] = grid.vertexLoc(loc)
-
-  style.left = grid.toUnit(x - sz/2)
-  style.top = grid.toUnit(y - sz/2)
-  style.clipPath = "circle(45%)"
   style.zIndex = "2"
   dom.setAttribute("title", loc.face.x + ", " + loc.face.y + ", " + loc.number )
   blueOnHover(dom)
@@ -60,9 +43,9 @@ function getVert(grid: Grid, loc: VLoc): HTMLElement {
 
 function main() {
   const grid = new Grid()
-  grid.setOrientation("vertex_up")  
+  grid.setOrientation("edge_up")  
   grid.setInnerDiameter(64)
-  grid.setSpacing(32)
+  grid.setSpacing(16)
 
   const app1 = document.getElementById("app")
   if (app1 === null) return
@@ -78,7 +61,7 @@ function main() {
     for (const v of loc.vertices()) {
       if (count > 2) break
       const ve = getVert(grid, v)
-      ve.style.backgroundColor = ["black","white"][v.number]
+      ve.style.backgroundColor = ["black","grey"][v.number]
       app.append(ve)
       ++count
     }
