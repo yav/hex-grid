@@ -52,6 +52,8 @@ export function newEdgeShape(grid: Grid, loc: ELoc): HTMLElement {
 }
 
 
+// A circle on the vertex of a hexagon.
+// Its diameter is the space between faces.
 export function newVertexShapeCirc(grid: Grid, loc: VLoc): HTMLElement {
   const dom = document.createElement("div")
   const style = dom.style

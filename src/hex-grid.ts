@@ -96,7 +96,7 @@ export class Grid {
 
   // Center fo edge
   edgeLoc(edge: ELoc): [number, number] {
-    const [x,y] = this.faceLoc(edge.face)
+    const [x,y] = this.faceLoc(edge.face_loc)
     const [dx,dy] = new Dir(edge.number).edge_unit(this.orientation)
     const l = (this.inner_diameter + this.spacing) / 2
     return [ x + l * dx, y + l * dy ]
@@ -104,7 +104,7 @@ export class Grid {
 
   // Center of vertex
   vertexLoc(vertex: VLoc): [number, number] {
-    const [x,y] = this.faceLoc(vertex.face)
+    const [x,y] = this.faceLoc(vertex.face_loc)
     const [dx,dy] = new Dir(vertex.number).vertex_unit(this.orientation)
     const l = this.outer_diameter / 2 + root_3 * this.spacing / 3
     return [x + dx * l, y + dy * l ]

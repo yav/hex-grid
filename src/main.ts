@@ -1,5 +1,5 @@
 import { Grid } from "./hex-grid.ts"
-import { FLoc, ELoc, VLoc } from "./coord.ts"
+import { FLoc, ELoc, VLoc, Dir } from "./coord.ts"
 import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
 
 function blueOnHover(dom: HTMLElement) {
@@ -25,7 +25,7 @@ function getEdge(grid: Grid, loc: ELoc): HTMLElement {
   const style = dom.style
   style.backgroundColor = "orange"
   style.zIndex = "1"
-  dom.setAttribute("title", loc.face.x + ", " + loc.face.y + ", " + loc.number )
+  dom.setAttribute("title", loc.face_loc.x + ", " + loc.face_loc.y + ", " + loc.number )
   blueOnHover(dom)
   return dom
 }
@@ -35,7 +35,7 @@ function getVert(grid: Grid, loc: VLoc): HTMLElement {
   const style = dom.style
   style.backgroundColor = "black"
   style.zIndex = "2"
-  dom.setAttribute("title", loc.face.x + ", " + loc.face.y + ", " + loc.number )
+  dom.setAttribute("title", loc.face_loc.x + ", " + loc.face_loc.y + ", " + loc.number )
   blueOnHover(dom)
   return dom
 }

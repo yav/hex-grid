@@ -92,24 +92,23 @@ export class FLoc {
     this.y += n * dy
   }
 
+  // The location of the edge in the given direction
   edge(d: Dir): ELoc { return new ELoc(this,d)  }
 
-  vertex(d: Dir): VLoc {
-    const v = new VLoc();
-    v.setFromFace(this,d)
-    return v
-  }
+  // The location of the starting vertex of the edge in the given direction.
+  // Edge point clockwise.
+  vertex(d: Dir): VLoc { return new VLoc(this,d) }
 
   // The edges neighboring this face (6)
   *edges(): Generator<ELoc> {
     for (const dir of directions())
-       yield new ELoc(this,dir)
+       yield this.edge(dir)
   }
 
   // The vertices touching this face (6)
   *vertices(): Generator<VLoc> {
     for (const dir of directions())
-      yield vloc_from_face(this,dir)
+      yield this.vertex(dir)
   }
   
 }
@@ -118,34 +117,45 @@ export class FLoc {
 
 // Edge locations
 export class ELoc {
-  face:   FLoc
+  face_loc: FLoc
   number: number /* 0..2 */
 
   constructor(face: FLoc, dir: Dir) {
-    this.face   = face.clone()
+    this.face_loc   = face.clone()
     this.number = dir.number
     if (dir.number >= 3) {
-      this.face.advance(dir)
+      this.face_loc.advance(dir)
       this.number -= 3
     }
   }
 
-  clone(): ELoc { return new ELoc(this.face, new Dir(this.number)) }
+  clone(): ELoc { return new ELoc(this.face_loc, new Dir(this.number)) }
+
+  face(n: number /* 0 .. 1 */): FLoc {
+    let f = this.face_loc.clone()
+    if (n > 0) f.advance(new Dir(this.number))
+    return f
+  }
+
+  // Get a vertex on this edge.
+  vertex(n: number /* 0 .. 1 */): VLoc {
+    return new VLoc(this.face_loc, new Dir(this.number + n))
+  }
 
   // The faces touching this edge (2)
   *faces(): Generator<FLoc> {
-      const f1 = this.face.clone()
+      const f1 = this.face_loc.clone()
       f1.advance(new Dir(this.number))
       yield f1
-      yield this.face.clone()
+      yield this.face_loc.clone()
     }
     
   // The vertices touching this edge (2)
   *vertices(): Generator<VLoc> {
     const dir = new Dir(this.number)
-    yield vloc_from_face(this.face, dir)
+    yield this.face_loc.vertex(dir)
     dir.clockwise()
-    yield vloc_from_face(this.face, dir)
+    yield this.face_loc.vertex(dir)
   }
     
 
@@ -155,45 +165,35 @@ export class ELoc {
 
 // Vertex locations
 export class VLoc {
-  face:   FLoc = new FLoc()
+  face_loc:   FLoc = new FLoc()
   number: number = 0 /* 0..1 */
-
-  clone(): VLoc {
-    const o = new VLoc()
-    o.face = this.face.clone()
-    o.number = this.number
-    return o
-  }
 
   // A vertex on a face.  The direction is that of the
   // edge starting at the desired vertex and pointing clockwise.
-  setFromFace (face: FLoc, dir: Dir) {
-    this.face   = face.clone()
+  constructor(face: FLoc, dir: Dir) {
+    this.face_loc   = face.clone()
     this.number = dir.number
 
     while (this.number >= 2) {
-      this.face.advance(dir)
+      this.face_loc.advance(dir)
       dir.number -= 2
       this.number = dir.number
     }
   }
 
-  // Get a vertex on this edge: 0 at the start, 1 at end,
-  // assuming that the edge points clockwise.
-  setFromEdge (edge: ELoc, n: number) {
-    this.setFromFace(edge.face, new Dir(this.number + n))
+  clone(): VLoc {
+    return new VLoc(this.face_loc, new Dir(this.number))
   }
-
 
   // Faces meeting at a vertex (3)
   *faces(): Generator<FLoc> {
-    const f1 = this.face.clone()
+    const f1 = this.face_loc.clone()
     yield f1
-    const f2 = this.face.clone()
+    const f2 = this.face_loc.clone()
     const dir = new Dir(this.number)
     f2.advance(dir)
     yield f2
-    const f3 = this.face.clone()
+    const f3 = this.face_loc.clone()
     dir.counter_clockwise()
     f3.advance(dir)
     yield f3
@@ -202,31 +202,18 @@ export class VLoc {
   // Edges meeting at this vertex (3)
   *edges(): Generator<ELoc> {
     if (this.number === 0) {
-      const f2 = this.face.clone()
+      const f2 = this.face_loc.clone()
       f2.advance(new Dir(5))
-      yield new ELoc(this.face, new Dir(0))
-      yield new ELoc(f2, new Dir(2))
-      yield new ELoc(f2, new Dir(1))
+      yield this.face_loc.edge(new Dir(0))
+      yield f2.edge(new Dir(2))
+      yield f2.edge(new Dir(1))
     } else {
-      const f2 = this.face.clone()
+      const f2 = this.face_loc.clone()
       f2.advance(new Dir(0))
-      yield new ELoc(this.face, new Dir(2)) 
-      yield new ELoc(f2, new Dir(2))
-      yield new ELoc(this.face, new Dir(1))
+      yield this.face_loc.edge(new Dir(1))
+      yield this.face_loc.edge(new Dir(0))
+      yield f2.edge(new Dir(2))
     }
   }
 }
-
-export function vloc_from_face(face: FLoc, dir: Dir): VLoc {
-  const v = new VLoc()
-  v.setFromFace(face,dir)
-  return v
-}
-
-export function vloc_fromedge(edge: ELoc, n: number): VLoc {
-  const v = new VLoc()
-  v.setFromEdge(edge,n)
-  return v
-}
-
 
