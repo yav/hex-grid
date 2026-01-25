@@ -1,5 +1,5 @@
 import { Grid } from "./hex-grid.ts"
-import { FLoc, ELoc, VLoc, Dir } from "./coord.ts"
+import { FLoc, ELoc, VLoc } from "./coord.ts"
 import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
 
 function blueOnHover(dom: HTMLElement) {
@@ -77,7 +77,7 @@ function main() {
   draw()
 
   for (const dir of grid.traverseFaces(5,10,true)) {
-      loc.advance(dir)
+      loc = loc.advance(dir)
       draw()
   }
   

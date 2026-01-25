@@ -118,11 +118,11 @@ export class Grid {
       const inner = (vup? w : h) - 2
 
       for (let r = 0; r < outer; ++r) {
-        for (let c = 0; c < inner; ++c) yield dir.clone()
-        if (wide) yield dir.clone()
+        for (let c = 0; c < inner; ++c) yield dir
+        if (wide) yield dir
         wide = !wide
-        dir.clockwise(3)
-        if (r < outer - 1) yield nl.clone()
+        dir = dir.clockwise(3)
+        if (r < outer - 1) yield nl
       }
   }
   

@@ -10,23 +10,19 @@ export function otherOrientation(x: Orientation): Orientation {
 
 // Directions
 export class Dir  {
-  number: number /* 0 .. 5 */
+  readonly number: number /* 0 .. 5 */
 
   constructor(n: number = 0) {
-    this.number = n
-    this.normalize()
-  }
-
-  clone(): Dir { const dir = new Dir(); dir.number = this.number; return dir }
-  
-  // Set the direction in the range 0 .. 5, using modulo arithmetic.
-  normalize() {
-    this.number %= 6
-    if (this.number < 0) this.number = 6 + this.number
+    const v = n % 6
+    if (v < 0) {
+      this.number = 6 + v
+    } else {
+      this.number = v
+    }
   }
   
-  clockwise        (n: number = 1) { this.number += n; this.normalize() }
-  counter_clockwise(n: number = 1) { this.number -= n; this.normalize() }
+  clockwise        (n: number = 1): Dir { return new Dir(this.number + n) }
+  counter_clockwise(n: number = 1): Dir { return new Dir(this.number - n) }
 
   relative_unit(o: Orientation, th0: number): [number, number] {
     let th = Math.PI * this.number / 3 - th0
@@ -70,30 +66,29 @@ export const edgeDir =
 
 // Face locations
 export class FLoc {
-  x: number
-  y: number
+  readonly x: number
+  readonly y: number
 
   constructor(x: number = 0, y: number = 0) {
     this.x = x
     this.y = y
   }
 
-  clone(): FLoc {
-    const o = new FLoc();
-    o.x = this.x
-    o.y = this.y
-    return o
-  }
-
   // Move the location `n` steps in direction `dir` from this.
-  advance(dir: Dir, n: number = 1) {
+  advance(dir: Dir, n: number = 1): FLoc {
     const [dx,dy] = neighborTable[dir.number]
-    this.x += n * dx
-    this.y += n * dy
+    return new FLoc(this.x + n * dx, this.y + n * dy)
   }
 
   // The location of the edge in the given direction
   edge(d: Dir): ELoc { return new ELoc(this,d)  }
+
+  // The location of the edge in the given direction.
+  // The second argument specifies if the edge is facing clockwise
+  // relative to this face, or not.
+  directed_edge(d: Dir, clockwise: boolean): DELoc {
+    return new DELoc(this.edge(d), clockwise? d.number > 2 : d.number < 3)
+  }
 
   // The location of the starting vertex of the edge in the given direction.
   // Edge point clockwise.
@@ -117,99 +112,109 @@ export class FLoc {
 
 // Edge locations
 export class ELoc {
-  face_loc: FLoc
-  number: number /* 0..2 */
+  readonly face_loc: FLoc
+  readonly number: number /* 0..2 */
 
   constructor(face: FLoc, dir: Dir) {
-    this.face_loc   = face.clone()
-    this.number = dir.number
     if (dir.number >= 3) {
-      this.face_loc.advance(dir)
-      this.number -= 3
+      this.face_loc = face.advance(dir)
+      this.number = dir.number - 3
+    } else {
+      this.face_loc = face
+      this.number = dir.number
     }
-  }
-
-  clone(): ELoc { return new ELoc(this.face_loc, new Dir(this.number)) }
-
-  face(n: number /* 0 .. 1 */): FLoc {
-    let f = this.face_loc.clone()
-    if (n > 0) f.advance(new Dir(this.number))
-    return f
-  }
-
-  // Get a vertex on this edge.
-  vertex(n: number /* 0 .. 1 */): VLoc {
-    return new VLoc(this.face_loc, new Dir(this.number + n))
   }
 
   // The faces touching this edge (2)
   *faces(): Generator<FLoc> {
-      const f1 = this.face_loc.clone()
-      f1.advance(new Dir(this.number))
-      yield f1
-      yield this.face_loc.clone()
+      yield this.face_loc
+      yield this.face_loc.advance(new Dir(this.number))
     }
     
   // The vertices touching this edge (2)
   *vertices(): Generator<VLoc> {
     const dir = new Dir(this.number)
     yield this.face_loc.vertex(dir)
-    dir.clockwise()
-    yield this.face_loc.vertex(dir)
+    yield this.face_loc.vertex(dir.clockwise())
   }
-    
 
 }
 
+// Directed edge location
+export class DELoc {
+  readonly edge_loc: ELoc
+  readonly reversed: boolean
+
+  // Using the `directed_edge` method of `FLoc` is the easiest way to
+  // construct this.
+  constructor(edge: ELoc, reversed: boolean) {
+    this.edge_loc = edge
+    this.reversed = reversed
+  }
+
+  rightFace(): FLoc {
+    const e = this.edge_loc
+    const f = e.face_loc
+    return this.reversed? f.advance(new Dir(e.number)) : f
+  }
+
+  leftFace(): FLoc {
+    const e = this.edge_loc
+    const f = e.face_loc
+    return this.reversed? f : f.advance(new Dir(e.number))
+  }
+
+  startVertex(): VLoc {
+    const d = new Dir(this.reversed? 1 : 0)
+    return new VLoc(this.edge_loc.face_loc, d)
+  }
+
+  endVertex(): VLoc {
+    const d = new Dir(this.reversed? 0 : 1)
+    return new VLoc(this.edge_loc.face_loc, d)
+  }
+}
 
 
 // Vertex locations
 export class VLoc {
-  face_loc:   FLoc = new FLoc()
-  number: number = 0 /* 0..1 */
+  readonly face_loc: FLoc
+  readonly number: number /* 0..1 */
 
   // A vertex on a face.  The direction is that of the
   // edge starting at the desired vertex and pointing clockwise.
   constructor(face: FLoc, dir: Dir) {
-    this.face_loc   = face.clone()
+    this.face_loc = face
+    let d = dir
     this.number = dir.number
 
-    while (this.number >= 2) {
-      this.face_loc.advance(dir)
-      dir.number -= 2
-      this.number = dir.number
+    while (d.number >= 2) {
+      this.face_loc = this.face_loc.advance(d)
+      d = d.counter_clockwise(2)
     }
-  }
-
-  clone(): VLoc {
-    return new VLoc(this.face_loc, new Dir(this.number))
+    this.number = d.number
   }
 
   // Faces meeting at a vertex (3)
   *faces(): Generator<FLoc> {
-    const f1 = this.face_loc.clone()
+    const f1 = this.face_loc
     yield f1
-    const f2 = this.face_loc.clone()
+    const f2 = this.face_loc
     const dir = new Dir(this.number)
-    f2.advance(dir)
-    yield f2
-    const f3 = this.face_loc.clone()
-    dir.counter_clockwise()
-    f3.advance(dir)
-    yield f3
+    yield f2.advance(dir)
+    const f3 = this.face_loc
+    yield f3.advance(dir.counter_clockwise())
   }
 
   // Edges meeting at this vertex (3)
   *edges(): Generator<ELoc> {
     if (this.number === 0) {
-      const f2 = this.face_loc.clone()
-      f2.advance(new Dir(5))
+      const f2 = this.face_loc.advance(new Dir(5))
       yield this.face_loc.edge(new Dir(0))
       yield f2.edge(new Dir(2))
       yield f2.edge(new Dir(1))
     } else {
-      const f2 = this.face_loc.clone()
-      f2.advance(new Dir(0))
+      const f2 = this.face_loc.advance(new Dir(0))
       yield this.face_loc.edge(new Dir(1))
       yield this.face_loc.edge(new Dir(0))
       yield f2.edge(new Dir(2))
