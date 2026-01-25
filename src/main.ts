@@ -1,11 +1,11 @@
 import { Grid } from "./hex-grid.ts"
-import { FLoc, ELoc, VLoc } from "./coord.ts"
+import { FLoc, ELoc, VLoc, DELoc } from "./coord.ts"
 import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
 
-function blueOnHover(dom: HTMLElement) {
+function blueOnHover(dom: HTMLElement, f: () => void = () => {}) {
   const style = dom.style
   let color = style.backgroundColor
-  dom.addEventListener("mouseenter",() => { color = style.backgroundColor; style.backgroundColor = "blue" })
+  dom.addEventListener("mouseenter",() => { color = style.backgroundColor; style.backgroundColor = "blue"; f() })
   dom.addEventListener("mouseleave",() => style.backgroundColor = color )
 }
 
@@ -16,7 +16,12 @@ function getHexDOM(grid: Grid, loc: FLoc): HTMLElement {
   style.textAlign = "center"
   dom.textContent = loc.x + ", " + loc.y
   style.backgroundColor = "red"
-  blueOnHover(dom)
+  function dump() { 
+    console.log(loc.toString())
+    for (const e of loc.edges()) console.log("  " + e)
+    for (const v of loc.vertices()) console.log("  " + v)
+  }
+  blueOnHover(dom, dump)
   return dom
 }
 
@@ -26,7 +31,20 @@ function getEdge(grid: Grid, loc: ELoc): HTMLElement {
   style.backgroundColor = "orange"
   style.zIndex = "1"
   dom.setAttribute("title", loc.face_loc.x + ", " + loc.face_loc.y + ", " + loc.number )
-  blueOnHover(dom)
+  function dump() { 
+    console.log(loc.toString())
+    for (const e of loc.faces()) console.log("  " + e)
+    for (const v of loc.vertices()) console.log("  " + v)
+    for (const r of [false, true]) {
+      const de1 = new DELoc(loc, r)
+      console.log("  " + de1);
+      console.log("    left: " + de1.left_face())
+      console.log("    right: " + de1.right_face())
+      console.log("    start: " + de1.start_vertex())
+      console.log("    end: " + de1.end_vertex())
+    }
+  }
+  blueOnHover(dom,dump)
   return dom
 }
 
@@ -36,7 +54,12 @@ function getVert(grid: Grid, loc: VLoc): HTMLElement {
   style.backgroundColor = "black"
   style.zIndex = "2"
   dom.setAttribute("title", loc.face_loc.x + ", " + loc.face_loc.y + ", " + loc.number )
-  blueOnHover(dom)
+  function dump() { 
+    console.log(loc.toString())
+    for (const e of loc.faces()) console.log("  " + e)
+    for (const v of loc.edges()) console.log("  " + v)
+  }
+  blueOnHover(dom,dump)
   return dom
 }
 

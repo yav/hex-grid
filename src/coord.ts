@@ -37,6 +37,8 @@ export class Dir  {
   vertex_unit(o: Orientation): [number, number] {
     return this.relative_unit(o, Math.PI / 6)
   }
+
+  toString(): string { return "Dir(" + this.number + ")" }
 }
 
 export function *directions(): Generator<Dir> {
@@ -44,6 +46,8 @@ export function *directions(): Generator<Dir> {
     yield new Dir(i)
   }
 }
+
+
 
 export type DirName = "N" | "NE" | "E" | "SE" | "S" | "SW" | "W" | "NW"
 
@@ -106,6 +110,9 @@ export class FLoc {
       yield this.vertex(dir)
   }
   
+  toString(): string {
+    return "FLoc(" + this.x + "," + this.y + ")"
+  }
 }
 
 
@@ -138,6 +145,9 @@ export class ELoc {
     yield this.face_loc.vertex(dir.clockwise())
   }
 
+  toString(): string {
+    return "ELoc(" + this.face_loc + "," + this.number + ")"
+  }
 }
 
 // Directed edge location
@@ -152,27 +162,34 @@ export class DELoc {
     this.reversed = reversed
   }
 
-  rightFace(): FLoc {
+  right_face(): FLoc {
     const e = this.edge_loc
     const f = e.face_loc
     return this.reversed? f.advance(new Dir(e.number)) : f
   }
 
-  leftFace(): FLoc {
+  left_face(): FLoc {
     const e = this.edge_loc
     const f = e.face_loc
     return this.reversed? f : f.advance(new Dir(e.number))
   }
 
-  startVertex(): VLoc {
-    const d = new Dir(this.reversed? 1 : 0)
+  start_vertex(): VLoc {
+    const dd = this.reversed? 1 : 0
+    const d = new Dir(this.edge_loc.number + dd)
     return new VLoc(this.edge_loc.face_loc, d)
   }
 
-  endVertex(): VLoc {
-    const d = new Dir(this.reversed? 0 : 1)
+  end_vertex(): VLoc {
+    const dd = this.reversed? 0 : 1
+    const d = new Dir(this.edge_loc.number + dd)
     return new VLoc(this.edge_loc.face_loc, d)
   }
+
+  toString(): string {
+    return "DELoc(" + this.edge_loc + "," + this.reversed + ")"
+  }
+
 }
 
 
@@ -199,26 +216,27 @@ export class VLoc {
   *faces(): Generator<FLoc> {
     const f1 = this.face_loc
     yield f1
-    const f2 = this.face_loc
     const dir = new Dir(this.number)
-    yield f2.advance(dir)
-    const f3 = this.face_loc
-    yield f3.advance(dir.counter_clockwise())
+    yield this.face_loc.advance(dir.counter_clockwise())
+    yield this.face_loc.advance(dir)
   }
 
   // Edges meeting at this vertex (3)
   *edges(): Generator<ELoc> {
     if (this.number === 0) {
-      const f2 = this.face_loc.advance(new Dir(5))
       yield this.face_loc.edge(new Dir(0))
+      const f2 = this.face_loc.advance(new Dir(5))
       yield f2.edge(new Dir(2))
       yield f2.edge(new Dir(1))
     } else {
-      const f2 = this.face_loc.advance(new Dir(0))
       yield this.face_loc.edge(new Dir(1))
       yield this.face_loc.edge(new Dir(0))
-      yield f2.edge(new Dir(2))
+      yield this.face_loc.advance(new Dir(0)).edge(new Dir(2))
     }
+  }
+
+  toString(): string {
+    return "VLoc(" + this.face_loc + "," + this.number + ")"
   }
 }
 
