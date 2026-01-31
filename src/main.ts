@@ -42,6 +42,8 @@ function getEdge(grid: Grid, loc: ELoc): HTMLElement {
       console.log("    right: " + de1.right_face())
       console.log("    start: " + de1.start_vertex())
       console.log("    end: " + de1.end_vertex())
+      console.log("    next-left: " + de1.next_edge_left())
+      console.log("    next-right: " + de1.next_edge_right())
     }
   }
   blueOnHover(dom,dump)
