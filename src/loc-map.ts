@@ -1,7 +1,11 @@
 import { FLoc, ELoc, VLoc, DELoc } from "./coord.ts"
 
+export interface LocMap<K, V> {
+  setLoc(k: K, v: V): void
+  getLoc(k: K): V | null
+}
 
-export class FLocMap<T> {
+export class FLocMap<T> implements LocMap<FLoc, T> {
   private data: { [x: number]: { [y: number]: T } } = {}
 
   setLoc(f: FLoc, d: T) {
@@ -23,67 +27,49 @@ export class FLocMap<T> {
   }
 }
 
-export class ELocMap<T> {
-  private data: FLocMap<{ [edge: number]: T }> = new FLocMap();
+abstract class LayeredMap<K, BaseK, V> implements LocMap<K, V> {
+  protected abstract data: LocMap<BaseK, { [n: number]: V }>
+  protected abstract split(k: K): [BaseK, number]
 
-  setLoc(e: ELoc, d: T) {
-    let mp = this.data.getLoc(e.face_loc)
+  setLoc(k: K, d: V) {
+    const [base, idx] = this.split(k)
+    let mp = this.data.getLoc(base)
     if (mp === null) {
       mp = {}
-      this.data.setLoc(e.face_loc, mp)
+      this.data.setLoc(base, mp)
     }
-    mp[e.number] = d
+    mp[idx] = d
   }
 
-  getLoc(e: ELoc): T | null {
-    const mp = this.data.getLoc(e.face_loc)
+  getLoc(k: K): V | null {
+    const [base, idx] = this.split(k)
+    const mp = this.data.getLoc(base)
     if (mp === null) return null
-    const d = mp[e.number]
+    const d = mp[idx]
     if (d === undefined) return null
     return d
   }
 }
 
-
-export class DELocMap<T> {
-  private data: ELocMap<{ [edge: number]: T }> = new ELocMap();
-
-  setLoc(e: DELoc, d: T) {
-    let mp = this.data.getLoc(e.edge_loc)
-    if (mp === null) {
-      mp = {}
-      this.data.setLoc(e.edge_loc, mp)
-    }
-    mp[e.reversed? 1 : 0] = d
-  }
-
-  getLoc(e: DELoc): T | null {
-    const mp = this.data.getLoc(e.edge_loc)
-    if (mp === null) return null
-    const d = mp[e.reversed? 1 : 0]
-    if (d === undefined) return null
-    return d
+export class ELocMap<T> extends LayeredMap<ELoc, FLoc, T> {
+  protected data = new FLocMap<{ [edge: number]: T }>()
+  protected split(e: ELoc): [FLoc, number] {
+    return [e.face_loc, e.number]
   }
 }
 
 
-export class VLocMap<T> {
-  private data: FLocMap<{ [edge: number]: T }> = new FLocMap();
-
-  setLoc(e: VLoc, d: T) {
-    let mp = this.data.getLoc(e.face_loc)
-    if (mp === null) {
-      mp = {}
-      this.data.setLoc(e.face_loc, mp)
-    }
-    mp[e.number] = d
+export class DELocMap<T> extends LayeredMap<DELoc, ELoc, T> {
+  protected data = new ELocMap<{ [edge: number]: T }>()
+  protected split(e: DELoc): [ELoc, number] {
+    return [e.edge_loc, e.reversed? 1 : 0]
   }
+}
 
-  getLoc(e: ELoc): T | null {
-    const mp = this.data.getLoc(e.face_loc)
-    if (mp === null) return null
-    const d = mp[e.number]
-    if (d === undefined) return null
-    return d
+
+export class VLocMap<T> extends LayeredMap<VLoc, FLoc, T> {
+  protected data = new FLocMap<{ [edge: number]: T }>()
+  protected split(v: VLoc): [FLoc, number] {
+    return [v.face_loc, v.number]
   }
 }
