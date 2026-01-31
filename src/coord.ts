@@ -162,6 +162,8 @@ export class DELoc {
     this.reversed = reversed
   }
 
+  reverse(): DELoc { return new DELoc(this.edge_loc, !this.reversed) }
+
   right_face(): FLoc {
     const e = this.edge_loc
     const f = e.face_loc
@@ -184,6 +186,29 @@ export class DELoc {
     const dd = this.reversed? 0 : 1
     const d = new Dir(this.edge_loc.number + dd)
     return new VLoc(this.edge_loc.face_loc, d)
+  }
+
+  // The face at the front of the edge
+  forward_face(): FLoc {
+    const e = this.edge_loc
+    const n = e.number
+    const f = e.face_loc
+    const d = this.reversed? -1 : 1
+    return f.advance(new Dir(n + d))
+  }
+
+  next_edge_left(): DELoc {
+    const n = this.edge_loc.number
+    const d = this.reversed? 2 : -1
+    return this.forward_face()
+               .directed_edge(new Dir(n + d), true)
+  }
+
+  next_edge_right(): DELoc {
+    const n = this.edge_loc.number
+    const d = this.reversed? 1 : -2
+    return this.forward_face()
+               .directed_edge(new Dir(n + d), false)
   }
 
   toString(): string {
