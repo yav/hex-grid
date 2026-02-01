@@ -1,5 +1,5 @@
 import { Grid } from "./hex-grid.ts"
-import { FLoc, ELoc, VLoc, DELoc } from "./coord.ts"
+import { FLoc, ELoc, VLoc } from "./coord.ts"
 import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
 
 function blueOnHover(dom: HTMLElement, f: () => void = () => {}) {
@@ -36,7 +36,7 @@ function getEdge(grid: Grid, loc: ELoc): HTMLElement {
     for (const e of loc.faces()) console.log("  " + e)
     for (const v of loc.vertices()) console.log("  " + v)
     for (const r of [false, true]) {
-      const de1 = new DELoc(loc, r)
+      const de1 = loc.directed(r)
       console.log("  " + de1);
       console.log("    left: " + de1.left_face())
       console.log("    right: " + de1.right_face())
