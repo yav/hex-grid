@@ -1,5 +1,6 @@
 
 const neighborTable = [ [1, 0], [0, 1], [-1, 1], [-1, 0], [0,-1], [1,-1] ]
+const internal = Symbol("internal")
 
 
 export type Orientation = "vertex_up" | "edge_up"
@@ -85,18 +86,18 @@ export class FLoc {
   }
 
   // The location of the edge in the given direction
-  edge(d: Dir): ELoc { return new ELoc(this,d)  }
+  edge(d: Dir): ELoc { return new ELoc(internal, this, d)  }
 
   // The location of the edge in the given direction.
   // The second argument specifies if the edge is facing clockwise
   // relative to this face, or not.
   directed_edge(d: Dir, clockwise: boolean): DELoc {
-    return new DELoc(this.edge(d), clockwise? d.number > 2 : d.number < 3)
+    return new DELoc(internal, this.edge(d), clockwise? d.number > 2 : d.number < 3)
   }
 
   // The location of the starting vertex of the edge in the given direction.
   // Edge point clockwise.
-  vertex(d: Dir): VLoc { return new VLoc(this,d) }
+  vertex(d: Dir): VLoc { return new VLoc(internal, this, d) }
 
   // The edges neighboring this face (6)
   *edges(): Generator<ELoc> {
@@ -122,7 +123,7 @@ export class ELoc {
   readonly face_loc: FLoc
   readonly number: number /* 0..2 */
 
-  constructor(face: FLoc, dir: Dir) {
+  constructor(_token: typeof internal, face: FLoc, dir: Dir) {
     if (dir.number >= 3) {
       this.face_loc = face.advance(dir)
       this.number = dir.number - 3
@@ -130,6 +131,10 @@ export class ELoc {
       this.face_loc = face
       this.number = dir.number
     }
+  }
+
+  directed(reversed: boolean): DELoc {
+    return new DELoc(internal, this, reversed)
   }
 
   // The faces touching this edge (2)
@@ -157,12 +162,12 @@ export class DELoc {
 
   // Using the `directed_edge` method of `FLoc` is the easiest way to
   // construct this.
-  constructor(edge: ELoc, reversed: boolean) {
+  constructor(_token: typeof internal, edge: ELoc, reversed: boolean) {
     this.edge_loc = edge
     this.reversed = reversed
   }
 
-  reverse(): DELoc { return new DELoc(this.edge_loc, !this.reversed) }
+  reverse(): DELoc { return new DELoc(internal, this.edge_loc, !this.reversed) }
 
   right_face(): FLoc {
     const e = this.edge_loc
@@ -179,13 +184,13 @@ export class DELoc {
   start_vertex(): VLoc {
     const dd = this.reversed? 1 : 0
     const d = new Dir(this.edge_loc.number + dd)
-    return new VLoc(this.edge_loc.face_loc, d)
+    return new VLoc(internal, this.edge_loc.face_loc, d)
   }
 
   end_vertex(): VLoc {
     const dd = this.reversed? 0 : 1
     const d = new Dir(this.edge_loc.number + dd)
-    return new VLoc(this.edge_loc.face_loc, d)
+    return new VLoc(internal, this.edge_loc.face_loc, d)
   }
 
   // The face at the front of the edge
@@ -225,7 +230,7 @@ export class VLoc {
 
   // A vertex on a face.  The direction is that of the
   // edge starting at the desired vertex and pointing clockwise.
-  constructor(face: FLoc, dir: Dir) {
+  constructor(_token: typeof internal, face: FLoc, dir: Dir) {
     this.face_loc = face
     let d = dir
     this.number = dir.number
