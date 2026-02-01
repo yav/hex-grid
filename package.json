@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docs": "typedoc --entryPointStrategy expand --entryPoints src --plugin typedoc-theme-fresh --theme fresh"
   },
   "devDependencies": {
+    "typedoc": "^0.28.16",
+    "typedoc-theme-fresh": "^0.2.3",
     "typescript": "^5.2.2",
     "vite": "^5.3.4"
   }

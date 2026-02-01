@@ -1,13 +1,24 @@
 import { FLoc, ELoc, VLoc, DELoc } from "./coord.ts"
 
-export interface LocMap<K, V> {
+/**
+ * Common interface for maps keyed by grid locations.
+ */
+  interface LocMap<K, V> {
+
+  /** Associates a value with a location. */
   setLoc(k: K, v: V): void
+
+  /** Retrieves the value associated with a location, or null if not found. */
   getLoc(k: K): V | null
 }
 
+/**
+ * A map for storing data associated with faces (hexagons).
+ */
 export class FLocMap<T> implements LocMap<FLoc, T> {
   private data: { [x: number]: { [y: number]: T } } = {}
 
+  /** Associates a value with a face location. */
   setLoc(f: FLoc, d: T) {
     let col = this.data[f.x]
     if (col === undefined) {
@@ -18,6 +29,7 @@ export class FLocMap<T> implements LocMap<FLoc, T> {
     col[f.y] = d
   }
 
+  /** Retrieves the value associated with a face location. */
   getLoc(f: FLoc): T | null {
     const col = this.data[f.x]
     if (col === undefined) return null
@@ -27,6 +39,10 @@ export class FLocMap<T> implements LocMap<FLoc, T> {
   }
 }
 
+/**
+ * Abstract base class for maps that are layered on top of another LocMap.
+ * @internal
+ */
 abstract class LayeredMap<K, BaseK, V> implements LocMap<K, V> {
   protected abstract data: LocMap<BaseK, { [n: number]: V }>
   protected abstract split(k: K): [BaseK, number]
@@ -51,6 +67,9 @@ abstract class LayeredMap<K, BaseK, V> implements LocMap<K, V> {
   }
 }
 
+/**
+ * A map for storing data associated with edges.
+ */
 export class ELocMap<T> extends LayeredMap<ELoc, FLoc, T> {
   protected data = new FLocMap<{ [edge: number]: T }>()
   protected split(e: ELoc): [FLoc, number] {
@@ -58,7 +77,9 @@ export class ELocMap<T> extends LayeredMap<ELoc, FLoc, T> {
   }
 }
 
-
+/**
+ * A map for storing data associated with directed edges.
+ */
 export class DELocMap<T> extends LayeredMap<DELoc, ELoc, T> {
   protected data = new ELocMap<{ [edge: number]: T }>()
   protected split(e: DELoc): [ELoc, number] {
@@ -67,6 +88,9 @@ export class DELocMap<T> extends LayeredMap<DELoc, ELoc, T> {
 }
 
 
+/**
+ * A map for storing data associated with vertices.
+ */
 export class VLocMap<T> extends LayeredMap<VLoc, FLoc, T> {
   protected data = new FLocMap<{ [edge: number]: T }>()
   protected split(v: VLoc): [FLoc, number] {

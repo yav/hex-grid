@@ -1,6 +1,12 @@
 import { Grid } from "./hex-grid.ts"
 import { FLoc, ELoc, VLoc } from "./coord.ts"
 
+/**
+ * Creates a DOM element representing a hexagonal face.
+ * @param grid The grid context.
+ * @param loc The location of the face.
+ * @returns A div element styled as a hexagon at the correct position.
+ */
 export function newHexShape(grid: Grid, loc: FLoc): HTMLElement {
     const dom = document.createElement("div")
     const style = dom.style
@@ -23,8 +29,13 @@ export function newHexShape(grid: Grid, loc: FLoc): HTMLElement {
     return dom
   }
 
-// Edges are shaped like a squished hexagon, so that they completely fill up
-// the space between hexagons (so vertices should be drawn on top).
+/**
+ * Creates a DOM element representing an edge between hexagons.
+ * Edges are shaped like squished hexagons to fill the space between faces.
+ * @param grid The grid context.
+ * @param loc The location of the edge.
+ * @returns A div element styled as an edge at the correct position and rotation.
+ */
 export function newEdgeShape(grid: Grid, loc: ELoc): HTMLElement {
     const dom = document.createElement("div")
     const style = dom.style
@@ -52,8 +63,12 @@ export function newEdgeShape(grid: Grid, loc: ELoc): HTMLElement {
 }
 
 
-// A circle on the vertex of a hexagon.
-// Its diameter is the space between faces.
+/**
+ * Creates a circular DOM element representing a vertex.
+ * @param grid The grid context.
+ * @param loc The location of the vertex.
+ * @returns A div element styled as a circle at the vertex position.
+ */
 export function newVertexShapeCirc(grid: Grid, loc: VLoc): HTMLElement {
   const dom = document.createElement("div")
   const style = dom.style
