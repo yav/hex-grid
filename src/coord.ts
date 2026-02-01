@@ -1,5 +1,4 @@
-
-const neighborTable = [ [1, 0], [0, 1], [-1, 1], [-1, 0], [0,-1], [1,-1] ]
+const neighborTable = [ [1, 0], [0, 1], [-1, 1], [-1, 0], [0,-1], [1,-1] ] as const
 const internal = Symbol("internal")
 
 
@@ -65,13 +64,15 @@ export class Dir  {
   }
 
   toString(): string { return "Dir(" + this.number + ")" }
+
+  equals(other: Dir): boolean { return this.number === other.number }
 }
+
+const DIRS = [0, 1, 2, 3, 4, 5].map(n => new Dir(n))
 
 /** Returns an iterator for all 6 possible directions. */
 export function *directions(): Generator<Dir> {
-  for (let i = 0; i < 6; ++i) {
-    yield new Dir(i)
-  }
+  for (const d of DIRS) yield d
 }
 
 
@@ -155,6 +156,8 @@ export class FLoc {
   toString(): string {
     return "FLoc(" + this.x + "," + this.y + ")"
   }
+
+  equals(other: FLoc): boolean { return this.x === other.x && this.y === other.y }
 }
 
 
@@ -201,6 +204,10 @@ export class ELoc {
 
   toString(): string {
     return "ELoc(" + this.face_loc + "," + this.number + ")"
+  }
+
+  equals(other: ELoc): boolean {
+    return this.number === other.number && this.face_loc.equals(other.face_loc)
   }
 }
 
@@ -281,6 +288,9 @@ export class DELoc {
     return "DELoc(" + this.edge_loc + "," + this.reversed + ")"
   }
 
+  equals(other: DELoc): boolean {
+    return this.reversed === other.reversed && this.edge_loc.equals(other.edge_loc)
+  }
 }
 
 
@@ -333,6 +343,10 @@ export class VLoc {
 
   toString(): string {
     return "VLoc(" + this.face_loc + "," + this.number + ")"
+  }
+
+  equals(other: VLoc): boolean {
+    return this.number === other.number && this.face_loc.equals(other.face_loc)
   }
 }
 
