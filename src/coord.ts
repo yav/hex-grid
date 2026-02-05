@@ -309,7 +309,6 @@ export class VLoc {
   constructor(_token: typeof internal, face: FLoc, dir: Dir) {
     this.face_loc = face
     let d = dir
-    this.number = dir.number
 
     while (d.number >= 2) {
       this.face_loc = this.face_loc.advance(d)
