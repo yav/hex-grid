@@ -150,27 +150,4 @@ export class Grid {
     return [x + dx * l, y + dy * l ]
   }
 
-  /**
-   * Generates a sequence of directions to traverse a rectangular area of faces.
-   * @param w Number of columns.
-   * @param h Number of rows.
-   * @param wide Whether the first row is "wide".
-   */
-  *traverseFaces(w: number, h: number, wide: boolean = true): Generator<Dir> {
-      let dir     = new Dir(0)
-      const vup   = this.orientation === "vertex_up"
-      const nl    = new Dir(vup? (wide? 2 : 1) : wide? 4 : 5)
-      const outer = (vup? h : w)
-      const inner = (vup? w : h) - 2
-
-      for (let r = 0; r < outer; ++r) {
-        for (let c = 0; c < inner; ++c) yield dir
-        if (wide) yield dir
-        wide = !wide
-        dir = dir.clockwise(3)
-        if (r < outer - 1) yield nl
-      }
-  }
-  
-
 }

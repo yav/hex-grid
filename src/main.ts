@@ -1,6 +1,7 @@
 import { Grid } from "./hex-grid.ts"
 import { FLoc, ELoc, VLoc } from "./coord.ts"
 import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
+import { RectangularRegion } from "./region.ts"
 
 function blueOnHover(dom: HTMLElement, f: () => void = () => {}) {
   const style = dom.style
@@ -78,8 +79,7 @@ function main() {
   app.style.position = "relative"
   
 
-  let loc = new FLoc()
-  function draw() {
+  function draw(loc: FLoc) {
     const dom = getHexDOM(grid,loc)
     app.append(dom)
     let count = 0;
@@ -99,11 +99,10 @@ function main() {
       ++count
     }
   }
-  draw()
 
-  for (const dir of grid.traverseFaces(5,10,true)) {
-      loc = loc.advance(dir)
-      draw()
+  const region = new RectangularRegion(new FLoc(), 5, 10, true, grid.orientation)
+  for (const loc of region.faces()) {
+      draw(loc)
   }
   
 }
