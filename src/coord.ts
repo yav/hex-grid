@@ -152,7 +152,18 @@ export class FLoc {
     for (const dir of directions())
       yield this.vertex(dir)
   }
-  
+
+  /**
+   * Calculates the distance from this face to another face.
+   * Uses the cube coordinate distance formula.
+   */
+  distance(other: FLoc): number {
+    const dx = other.x - this.x
+    const dy = other.y - this.y
+    const dz = -dx - dy
+    return (Math.abs(dx) + Math.abs(dy) + Math.abs(dz)) / 2
+  }
+
   toString(): string {
     return "FLoc(" + this.x + "," + this.y + ")"
   }
