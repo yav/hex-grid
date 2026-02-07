@@ -2,8 +2,9 @@ import { FLoc, ELoc, VLoc, DELoc } from "./coord.ts"
 
 /**
  * Common interface for maps keyed by grid locations.
+ * @internal
  */
-  interface LocMap<K, V> {
+interface LocMap<K, V> {
 
   /** Associates a value with a location. */
   setLoc(k: K, v: V): void
@@ -95,5 +96,52 @@ export class VLocMap<T> extends LayeredMap<VLoc, FLoc, T> {
   protected data = new FLocMap<{ [edge: number]: T }>()
   protected split(v: VLoc): [FLoc, number] {
     return [v.face_loc, v.number]
+  }
+}
+
+/**
+ * A filtered wrapper around an underlying location map.
+ * Filters all operations through a membership predicate.
+ *
+ * This is a generic wrapper that works with any map type (FLocMap, ELocMap, etc.)
+ * by delegating to the underlying map while checking location membership.
+ */
+export class FilteredLocMap<Loc, T> implements LocMap<Loc, T> {
+  private readonly map: LocMap<Loc, T>
+  private readonly contains: (loc: Loc) => boolean
+
+  /**
+   * Creates a filtered location map.
+   * @param map The underlying map to wrap (e.g., FLocMap, ELocMap, VLocMap, DELocMap).
+   * @param contains A predicate that determines if a location should be included.
+   */
+  constructor(
+    map: LocMap<Loc, T>,
+    contains: (loc: Loc) => boolean
+  ) {
+    this.map = map
+    this.contains = contains
+  }
+
+  /**
+   * Associates a value with a location.
+   * Does nothing if the location does not satisfy the predicate.
+   */
+  setLoc(loc: Loc, value: T): void {
+    if (!this.contains(loc)) {
+      return
+    }
+    this.map.setLoc(loc, value)
+  }
+
+  /**
+   * Retrieves the value associated with a location.
+   * Returns null if the location does not satisfy the predicate or has no associated value.
+   */
+  getLoc(loc: Loc): T | null {
+    if (!this.contains(loc)) {
+      return null
+    }
+    return this.map.getLoc(loc)
   }
 }
