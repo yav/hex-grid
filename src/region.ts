@@ -123,10 +123,10 @@ export class RectangularRegion extends Region {
   /**
    * Iterates over all faces in the region.
    * Traversal order:
-   * - For vertex_up: goes row by row from top to bottom,
-   *   within each row moves left to right (direction 0).
-   * - For edge_up: goes column by column,
-   *   within each column moves in direction 0.
+   * - For vertex_up: goes row by row from top to bottom.
+   *   Rows alternate direction in a zigzag pattern (first row left-to-right,
+   *   second row right-to-left, etc.) to maintain connectivity.
+   * - For edge_up: goes column by column with the same zigzag pattern.
    */
   *faces(): Generator<FLoc> {
     yield* this.computeFaces()
@@ -137,29 +137,31 @@ export class RectangularRegion extends Region {
     let wide = this.startsWide
     const vup = this.orientation === "vertex_up"
 
-    // Outer and inner dimensions depend on orientation
+    // Outer dimension (number of rows/columns) and inner dimension (base row/column length)
     const outer = vup ? this.height : this.width
     const inner = (vup ? this.width : this.height) - 1
 
-    for (let r = 0; r < outer; ++r) {
-      // Remember the start of this row
-      const rowStart = pos
+    // Direction to move to the next row/column (perpendicular to traversal direction)
+    const nl = new Dir(vup ? (this.startsWide ? 2 : 1) : this.startsWide ? 4 : 5)
 
-      // Yield faces in this row
+    // Direction for traversing within a row/column (alternates each row for zigzag)
+    let dir = new Dir(0)
+
+    for (let r = 0; r < outer; ++r) {
+      // Yield all faces in this row/column
       const rowLength = inner + (wide ? 1 : 0)
       for (let c = 0; c < rowLength; ++c) {
         yield pos
         if (c < rowLength - 1) {
-          pos = pos.advance(new Dir(0))
+          pos = pos.advance(dir)
         }
       }
 
-      // Move to next row
+      // Prepare for next row/column
+      wide = !wide
+      dir = dir.clockwise(3)  // Reverse direction (180°) for zigzag pattern
       if (r < outer - 1) {
-        // Direction to next row depends on current row's width
-        const nl = new Dir(vup ? (wide ? 2 : 1) : wide ? 4 : 5)
-        pos = rowStart.advance(nl)
-        wide = !wide
+        pos = pos.advance(nl)  // Move to start of next row/column
       }
     }
   }
