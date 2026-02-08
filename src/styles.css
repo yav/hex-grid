@@ -115,6 +115,30 @@ body {
   height: 18px;
 }
 
+/* Radio button styling */
+.right-pane input[type="radio"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.right-pane .radio-group {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.right-pane .radio-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal !important;
+  user-select: none;
+  margin-bottom: 0;
+}
+
 /* Select dropdown styling */
 .right-pane select {
   width: 100%;

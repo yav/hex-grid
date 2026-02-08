@@ -2,9 +2,8 @@ import { FLoc, ELoc, VLoc, DELoc } from "./coord.ts"
 
 /**
  * Common interface for maps keyed by grid locations.
- * @internal
  */
-interface LocMap<K, V> {
+export interface LocMap<K, V> {
 
   /** Associates a value with a location. */
   setLoc(k: K, v: V): void

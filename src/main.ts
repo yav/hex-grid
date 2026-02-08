@@ -2,7 +2,7 @@ import { Grid } from "./hex-grid.ts"
 import { FLoc, ELoc, VLoc } from "./coord.ts"
 import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
 import { RectangularRegion, HexagonalRegion, Region } from "./region.ts"
-import { FLocMap } from "./loc-map.ts"
+import { FLocMap, ELocMap, VLocMap, type LocMap } from "./loc-map.ts"
 import type { Orientation } from "./coord.ts"
 
 interface GridConfig {
@@ -14,6 +14,9 @@ interface GridConfig {
   hexRadius: number
   debugHover: boolean
   hexElements: FLocMap<number> // Maps hexagon locations to element counts (0-6)
+  edgeElements: ELocMap<number> // Maps edge locations to element counts (0-1)
+  vertexElements: VLocMap<number> // Maps vertex locations to element counts (0-1)
+  editMode: "none" | "add" | "remove"
 }
 
 function addDebugHover(
@@ -37,44 +40,69 @@ function addDebugHover(
   })
 }
 
-function createHexElements(
+function createElementBox(
+  x: number,
+  y: number,
+  config: GridConfig,
+  onRemove: () => void
+): HTMLElement {
+  const elementSize = 8
+  const element = document.createElement("div")
+  element.className = "hex-element"
+  element.style.left = `${x - elementSize / 2}px`
+  element.style.top = `${y - elementSize / 2}px`
+
+  // Add cursor style and click handler for remove mode
+  if (config.editMode === "remove") {
+    element.style.cursor = "not-allowed"
+    element.style.pointerEvents = "auto"
+    element.addEventListener("click", (e) => {
+      e.stopPropagation()
+      onRemove()
+    })
+  }
+
+  return element
+}
+
+function createElements<T extends FLoc | ELoc | VLoc>(
   grid: Grid,
-  loc: FLoc,
-  count: number,
+  loc: T,
+  positions: [number, number][],
   offsetX: number,
-  offsetY: number
+  offsetY: number,
+  config: GridConfig,
+  getPosition: (grid: Grid, loc: T) => [number, number],
+  onRemove: () => void
 ): HTMLElement[] {
-  if (count <= 0 || count > 6) return []
-
   const elements: HTMLElement[] = []
-  const [centerX, centerY] = grid.faceLoc(loc)
-  const elementSize = 8 // Size of each orange square
+  const [centerX, centerY] = getPosition(grid, loc)
 
-  // Define positions for different counts
-  // Positions are relative offsets from center
-  // Consistent spacing: 12px between element centers (4px gap between edges)
-  const positions: [number, number][][] = [
-    [], // 0 elements
-    [[0, 0]], // 1 element: center
-    [[-6, 0], [6, 0]], // 2 elements: horizontal line, 12px spacing
-    [[-12, 0], [0, 0], [12, 0]], // 3 elements: horizontal line, 12px spacing
-    [[-6, -6], [6, -6], [-6, 6], [6, 6]], // 4 elements: 2x2 grid, 12px spacing
-    [[-12, -6], [0, -6], [12, -6], [-6, 6], [6, 6]], // 5 elements: 3 top, 2 bottom, 12px spacing
-    [[-12, -6], [0, -6], [12, -6], [-12, 6], [0, 6], [12, 6]], // 6 elements: 2x3 grid, 12px spacing
-  ]
-
-  const offsets = positions[count]
-
-  for (const [dx, dy] of offsets) {
-    const element = document.createElement("div")
-    element.className = "hex-element"
-    element.style.left = `${centerX + dx - elementSize / 2 + offsetX}px`
-    element.style.top = `${centerY + dy - elementSize / 2 + offsetY}px`
+  for (const [dx, dy] of positions) {
+    const element = createElementBox(
+      centerX + dx + offsetX,
+      centerY + dy + offsetY,
+      config,
+      onRemove
+    )
     elements.push(element)
   }
 
   return elements
 }
+
+// Position patterns for different hexagon element counts
+// Positions are relative offsets from center
+// Consistent spacing: 12px between element centers (4px gap between edges)
+const HEX_ELEMENT_POSITIONS: [number, number][][] = [
+  [], // 0 elements
+  [[0, 0]], // 1 element: center
+  [[-6, 0], [6, 0]], // 2 elements: horizontal line, 12px spacing
+  [[-12, 0], [0, 0], [12, 0]], // 3 elements: horizontal line, 12px spacing
+  [[-6, -6], [6, -6], [-6, 6], [6, 6]], // 4 elements: 2x2 grid, 12px spacing
+  [[-12, -6], [0, -6], [12, -6], [-6, 6], [6, 6]], // 5 elements: 3 top, 2 bottom, 12px spacing
+  [[-12, -6], [0, -6], [12, -6], [-12, 6], [0, 6], [12, 6]], // 6 elements: 2x3 grid, 12px spacing
+]
 
 function renderGrid(leftPane: HTMLElement, config: GridConfig) {
   // Clear the left pane and set up for absolute positioning
@@ -148,6 +176,26 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
     hex.style.left = `${currentLeft + offsetX}px`
     hex.style.top = `${currentTop + offsetY}px`
 
+    // Add cursor style based on edit mode
+    if (config.editMode === "add") {
+      hex.style.cursor = "copy"
+    } else if (config.editMode === "remove") {
+      hex.style.cursor = "default"
+    } else {
+      hex.style.cursor = "default"
+    }
+
+    // Add click handler for adding entities
+    if (config.editMode === "add") {
+      hex.addEventListener("click", () => {
+        const currentCount = config.hexElements.getLoc(loc) || 0
+        if (currentCount < 6) {
+          config.hexElements.setLoc(loc, currentCount + 1)
+          renderGrid(leftPane, config)
+        }
+      })
+    }
+
     // Add hover debug info
     if (config.debugHover && debugTooltip) {
       addDebugHover(hex, loc, debugTooltip, leftPane)
@@ -157,8 +205,23 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
 
     // Render elements in this hexagon
     const elementCount = config.hexElements.getLoc(loc) || 0
-    if (elementCount > 0) {
-      const elements = createHexElements(grid, loc, elementCount, offsetX, offsetY)
+    if (elementCount > 0 && elementCount <= 6) {
+      const elements = createElements(
+        grid,
+        loc,
+        HEX_ELEMENT_POSITIONS[elementCount],
+        offsetX,
+        offsetY,
+        config,
+        (g, l) => g.faceLoc(l),
+        () => {
+          const currentCount = config.hexElements.getLoc(loc) || 0
+          if (currentCount > 0) {
+            config.hexElements.setLoc(loc, currentCount - 1)
+            renderGrid(leftPane, config)
+          }
+        }
+      )
       for (const element of elements) {
         gridContainer.append(element)
       }
@@ -176,12 +239,53 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
     edgeShape.style.left = `${currentLeft + offsetX}px`
     edgeShape.style.top = `${currentTop + offsetY}px`
 
+    // Add cursor style based on edit mode
+    if (config.editMode === "add") {
+      edgeShape.style.cursor = "copy"
+    } else if (config.editMode === "remove") {
+      edgeShape.style.cursor = "default"
+    } else {
+      edgeShape.style.cursor = "default"
+    }
+
+    // Add click handler for adding entities
+    if (config.editMode === "add") {
+      edgeShape.addEventListener("click", () => {
+        const currentCount = config.edgeElements.getLoc(edge) || 0
+        if (currentCount < 1) {
+          config.edgeElements.setLoc(edge, 1)
+          renderGrid(leftPane, config)
+        }
+      })
+    }
+
     // Add hover debug info
     if (config.debugHover && debugTooltip) {
       addDebugHover(edgeShape, edge, debugTooltip, leftPane)
     }
 
     gridContainer.append(edgeShape)
+
+    // Render element on this edge if present
+    const hasEdgeElement = (config.edgeElements.getLoc(edge) || 0) > 0
+    if (hasEdgeElement) {
+      const elements = createElements(
+        grid,
+        edge,
+        [[0, 0]], // Single element at center
+        offsetX,
+        offsetY,
+        config,
+        (g, l) => g.edgeLoc(l),
+        () => {
+          config.edgeElements.setLoc(edge, 0)
+          renderGrid(leftPane, config)
+        }
+      )
+      for (const element of elements) {
+        gridContainer.append(element)
+      }
+    }
   }
 
   // Render all vertices in yellow
@@ -195,12 +299,53 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
     vertexShape.style.left = `${currentLeft + offsetX}px`
     vertexShape.style.top = `${currentTop + offsetY}px`
 
+    // Add cursor style based on edit mode
+    if (config.editMode === "add") {
+      vertexShape.style.cursor = "copy"
+    } else if (config.editMode === "remove") {
+      vertexShape.style.cursor = "default"
+    } else {
+      vertexShape.style.cursor = "default"
+    }
+
+    // Add click handler for adding entities
+    if (config.editMode === "add") {
+      vertexShape.addEventListener("click", () => {
+        const currentCount = config.vertexElements.getLoc(vertex) || 0
+        if (currentCount < 1) {
+          config.vertexElements.setLoc(vertex, 1)
+          renderGrid(leftPane, config)
+        }
+      })
+    }
+
     // Add hover debug info
     if (config.debugHover && debugTooltip) {
       addDebugHover(vertexShape, vertex, debugTooltip, leftPane)
     }
 
     gridContainer.append(vertexShape)
+
+    // Render element on this vertex if present
+    const hasVertexElement = (config.vertexElements.getLoc(vertex) || 0) > 0
+    if (hasVertexElement) {
+      const elements = createElements(
+        grid,
+        vertex,
+        [[0, 0]], // Single element at center
+        offsetX,
+        offsetY,
+        config,
+        (g, l) => g.vertexLoc(l),
+        () => {
+          config.vertexElements.setLoc(vertex, 0)
+          renderGrid(leftPane, config)
+        }
+      )
+      for (const element of elements) {
+        gridContainer.append(element)
+      }
+    }
   }
 }
 
@@ -227,6 +372,75 @@ function createDebugHoverControl(config: GridConfig, updateGrid: () => void): HT
 
   debugSection.appendChild(debugLabel)
   return debugSection
+}
+
+function createEditModeControl(config: GridConfig, updateGrid: () => void): HTMLElement {
+  const editSection = document.createElement("div")
+  editSection.className = "control-section"
+
+  const editLabel = document.createElement("label")
+  editLabel.textContent = "Edit Mode:"
+  editSection.appendChild(editLabel)
+
+  // Create container for radio buttons (inline row)
+  const radioContainer = document.createElement("div")
+  radioContainer.className = "radio-group"
+
+  // Create radio button for "None"
+  const noneLabel = document.createElement("label")
+  noneLabel.className = "radio-label"
+  const noneRadio = document.createElement("input")
+  noneRadio.type = "radio"
+  noneRadio.name = "edit-mode"
+  noneRadio.value = "none"
+  noneRadio.checked = config.editMode === "none"
+  const noneText = document.createElement("span")
+  noneText.textContent = "None"
+  noneLabel.appendChild(noneRadio)
+  noneLabel.appendChild(noneText)
+  radioContainer.appendChild(noneLabel)
+
+  // Create radio button for "Add"
+  const addLabel = document.createElement("label")
+  addLabel.className = "radio-label"
+  const addRadio = document.createElement("input")
+  addRadio.type = "radio"
+  addRadio.name = "edit-mode"
+  addRadio.value = "add"
+  addRadio.checked = config.editMode === "add"
+  const addText = document.createElement("span")
+  addText.textContent = "Add"
+  addLabel.appendChild(addRadio)
+  addLabel.appendChild(addText)
+  radioContainer.appendChild(addLabel)
+
+  // Create radio button for "Remove"
+  const removeLabel = document.createElement("label")
+  removeLabel.className = "radio-label"
+  const removeRadio = document.createElement("input")
+  removeRadio.type = "radio"
+  removeRadio.name = "edit-mode"
+  removeRadio.value = "remove"
+  removeRadio.checked = config.editMode === "remove"
+  const removeText = document.createElement("span")
+  removeText.textContent = "Remove"
+  removeLabel.appendChild(removeRadio)
+  removeLabel.appendChild(removeText)
+  radioContainer.appendChild(removeLabel)
+
+  editSection.appendChild(radioContainer)
+
+  // Add event listeners
+  const updateEditMode = (mode: "none" | "add" | "remove") => {
+    config.editMode = mode
+    updateGrid()
+  }
+
+  noneRadio.addEventListener("change", () => updateEditMode("none"))
+  addRadio.addEventListener("change", () => updateEditMode("add"))
+  removeRadio.addEventListener("change", () => updateEditMode("remove"))
+
+  return editSection
 }
 
 function createOrientationControl(config: GridConfig, updateGrid: () => void): HTMLElement {
@@ -392,6 +606,7 @@ function createControls(leftPane: HTMLElement, config: GridConfig): HTMLElement 
   controlsContainer.appendChild(topRow)
 
   controlsContainer.appendChild(createRegionControl(config, updateGrid))
+  controlsContainer.appendChild(createEditModeControl(config, updateGrid))
 
   return controlsContainer
 }
@@ -411,7 +626,10 @@ function main() {
     rectStartsWide: true,
     hexRadius: 5,
     debugHover: false,
-    hexElements: new FLocMap<number>()
+    hexElements: new FLocMap<number>(),
+    edgeElements: new ELocMap<number>(),
+    vertexElements: new VLocMap<number>(),
+    editMode: "none"
   }
 
   // Add some test elements to hexagons
