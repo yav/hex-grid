@@ -1,5 +1,5 @@
 import { Grid } from "./hex-grid.ts"
-import { FLoc } from "./coord.ts"
+import { FLoc, ELoc, VLoc } from "./coord.ts"
 import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
 import { RectangularRegion, HexagonalRegion, Region } from "./region.ts"
 import type { Orientation } from "./coord.ts"
@@ -11,12 +11,42 @@ interface GridConfig {
   rectHeight: number
   rectStartsWide: boolean
   hexRadius: number
+  debugHover: boolean
+}
+
+function addDebugHover(
+  element: HTMLElement,
+  location: FLoc | ELoc | VLoc,
+  debugTooltip: HTMLDivElement,
+  leftPane: HTMLElement
+) {
+  element.addEventListener("mouseenter", () => {
+    debugTooltip.textContent = location.toString()
+    debugTooltip.style.display = "block"
+  })
+
+  element.addEventListener("mousemove", (e: MouseEvent) => {
+    debugTooltip.style.left = `${e.pageX - leftPane.offsetLeft + 10}px`
+    debugTooltip.style.top = `${e.pageY - leftPane.offsetTop + 10}px`
+  })
+
+  element.addEventListener("mouseleave", () => {
+    debugTooltip.style.display = "none"
+  })
 }
 
 function renderGrid(leftPane: HTMLElement, config: GridConfig) {
   // Clear the left pane and set up for absolute positioning
   leftPane.innerHTML = ""
   leftPane.style.position = "relative"
+
+  // Create debug info tooltip if debug mode is enabled
+  let debugTooltip: HTMLDivElement | null = null
+  if (config.debugHover) {
+    debugTooltip = document.createElement("div")
+    debugTooltip.className = "debug-tooltip"
+    leftPane.appendChild(debugTooltip)
+  }
 
   // Create and configure the grid
   const grid = new Grid()
@@ -76,6 +106,12 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
     const currentTop = parseFloat(hex.style.top)
     hex.style.left = `${currentLeft + offsetX}px`
     hex.style.top = `${currentTop + offsetY}px`
+
+    // Add hover debug info
+    if (config.debugHover && debugTooltip) {
+      addDebugHover(hex, loc, debugTooltip, leftPane)
+    }
+
     gridContainer.append(hex)
   }
 
@@ -89,6 +125,12 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
     const currentTop = parseFloat(edgeShape.style.top)
     edgeShape.style.left = `${currentLeft + offsetX}px`
     edgeShape.style.top = `${currentTop + offsetY}px`
+
+    // Add hover debug info
+    if (config.debugHover && debugTooltip) {
+      addDebugHover(edgeShape, edge, debugTooltip, leftPane)
+    }
+
     gridContainer.append(edgeShape)
   }
 
@@ -102,13 +144,44 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
     const currentTop = parseFloat(vertexShape.style.top)
     vertexShape.style.left = `${currentLeft + offsetX}px`
     vertexShape.style.top = `${currentTop + offsetY}px`
+
+    // Add hover debug info
+    if (config.debugHover && debugTooltip) {
+      addDebugHover(vertexShape, vertex, debugTooltip, leftPane)
+    }
+
     gridContainer.append(vertexShape)
   }
 }
 
+function createDebugHoverControl(config: GridConfig, updateGrid: () => void): HTMLElement {
+  const debugSection = document.createElement("div")
+  debugSection.className = "control-section-inline"
+
+  const debugLabel = document.createElement("label")
+  const debugCheckbox = document.createElement("input")
+  debugCheckbox.type = "checkbox"
+  debugCheckbox.id = "debug-hover-checkbox"
+  debugCheckbox.checked = config.debugHover
+
+  const debugText = document.createElement("span")
+  debugText.textContent = "Debug Hover"
+
+  debugLabel.appendChild(debugCheckbox)
+  debugLabel.appendChild(debugText)
+
+  debugCheckbox.addEventListener("change", () => {
+    config.debugHover = debugCheckbox.checked
+    updateGrid()
+  })
+
+  debugSection.appendChild(debugLabel)
+  return debugSection
+}
+
 function createOrientationControl(config: GridConfig, updateGrid: () => void): HTMLElement {
   const orientationSection = document.createElement("div")
-  orientationSection.className = "control-section"
+  orientationSection.className = "control-section-inline"
 
   const orientationLabel = document.createElement("label")
   const orientationCheckbox = document.createElement("input")
@@ -117,7 +190,7 @@ function createOrientationControl(config: GridConfig, updateGrid: () => void): H
   orientationCheckbox.checked = false // false = edge_up, true = vertex_up
 
   const orientationText = document.createElement("span")
-  orientationText.textContent = " Vertex Up"
+  orientationText.textContent = "Vertex Up"
 
   orientationLabel.appendChild(orientationCheckbox)
   orientationLabel.appendChild(orientationText)
@@ -263,7 +336,8 @@ function createControls(leftPane: HTMLElement): HTMLElement {
     rectWidth: 7,
     rectHeight: 10,
     rectStartsWide: true,
-    hexRadius: 5
+    hexRadius: 5,
+    debugHover: false
   }
 
   // Helper function to re-render grid
@@ -271,8 +345,13 @@ function createControls(leftPane: HTMLElement): HTMLElement {
     renderGrid(leftPane, config)
   }
 
-  // Add controls
-  controlsContainer.appendChild(createOrientationControl(config, updateGrid))
+  // Add controls - top row with orientation and debug hover
+  const topRow = document.createElement("div")
+  topRow.className = "controls-top-row"
+  topRow.appendChild(createOrientationControl(config, updateGrid))
+  topRow.appendChild(createDebugHoverControl(config, updateGrid))
+  controlsContainer.appendChild(topRow)
+
   controlsContainer.appendChild(createRegionControl(config, updateGrid))
 
   return controlsContainer
@@ -291,7 +370,8 @@ function main() {
     rectWidth: 7,
     rectHeight: 10,
     rectStartsWide: true,
-    hexRadius: 5
+    hexRadius: 5,
+    debugHover: false
   }
   renderGrid(leftPane, initialConfig)
 

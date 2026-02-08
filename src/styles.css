@@ -51,6 +51,36 @@ body {
   border-bottom: none;
 }
 
+/* Top row with inline controls */
+.controls-top-row {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Inline control sections (no borders) */
+.control-section-inline {
+  display: inline-block;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* Debug hover tooltip */
+.debug-tooltip {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  display: none;
+  z-index: 1000;
+  white-space: nowrap;
+}
+
 /* Label styling */
 .right-pane label {
   display: block;
