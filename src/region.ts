@@ -210,7 +210,7 @@ export class HexagonalRegion extends Region {
 
       // Walk around the ring
       for (let side = 0; side < 6; side++) {
-        const dir = new Dir(side)
+        const dir = new Dir(side + 2)
         for (let step = 0; step < r; step++) {
           yield pos
           pos = pos.advance(dir)
