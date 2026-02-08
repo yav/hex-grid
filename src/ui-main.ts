@@ -2,6 +2,7 @@ import { Grid } from "./hex-grid.ts"
 import { FLoc, ELoc, VLoc } from "./coord.ts"
 import { newHexShape, newEdgeShape, newVertexShapeCirc } from "./shapes.ts"
 import { RectangularRegion, HexagonalRegion, Region } from "./region.ts"
+import { FLocMap } from "./loc-map.ts"
 import type { Orientation } from "./coord.ts"
 
 interface GridConfig {
@@ -12,6 +13,7 @@ interface GridConfig {
   rectStartsWide: boolean
   hexRadius: number
   debugHover: boolean
+  hexElements: FLocMap<number> // Maps hexagon locations to element counts (0-6)
 }
 
 function addDebugHover(
@@ -33,6 +35,45 @@ function addDebugHover(
   element.addEventListener("mouseleave", () => {
     debugTooltip.style.display = "none"
   })
+}
+
+function createHexElements(
+  grid: Grid,
+  loc: FLoc,
+  count: number,
+  offsetX: number,
+  offsetY: number
+): HTMLElement[] {
+  if (count <= 0 || count > 6) return []
+
+  const elements: HTMLElement[] = []
+  const [centerX, centerY] = grid.faceLoc(loc)
+  const elementSize = 8 // Size of each orange square
+
+  // Define positions for different counts
+  // Positions are relative offsets from center
+  // Consistent spacing: 12px between element centers (4px gap between edges)
+  const positions: [number, number][][] = [
+    [], // 0 elements
+    [[0, 0]], // 1 element: center
+    [[-6, 0], [6, 0]], // 2 elements: horizontal line, 12px spacing
+    [[-12, 0], [0, 0], [12, 0]], // 3 elements: horizontal line, 12px spacing
+    [[-6, -6], [6, -6], [-6, 6], [6, 6]], // 4 elements: 2x2 grid, 12px spacing
+    [[-12, -6], [0, -6], [12, -6], [-6, 6], [6, 6]], // 5 elements: 3 top, 2 bottom, 12px spacing
+    [[-12, -6], [0, -6], [12, -6], [-12, 6], [0, 6], [12, 6]], // 6 elements: 2x3 grid, 12px spacing
+  ]
+
+  const offsets = positions[count]
+
+  for (const [dx, dy] of offsets) {
+    const element = document.createElement("div")
+    element.className = "hex-element"
+    element.style.left = `${centerX + dx - elementSize / 2 + offsetX}px`
+    element.style.top = `${centerY + dy - elementSize / 2 + offsetY}px`
+    elements.push(element)
+  }
+
+  return elements
 }
 
 function renderGrid(leftPane: HTMLElement, config: GridConfig) {
@@ -113,6 +154,15 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
     }
 
     gridContainer.append(hex)
+
+    // Render elements in this hexagon
+    const elementCount = config.hexElements.getLoc(loc) || 0
+    if (elementCount > 0) {
+      const elements = createHexElements(grid, loc, elementCount, offsetX, offsetY)
+      for (const element of elements) {
+        gridContainer.append(element)
+      }
+    }
   }
 
   // Render all edges in black
@@ -326,19 +376,8 @@ function createRegionControl(config: GridConfig, updateGrid: () => void): HTMLEl
   return container
 }
 
-function createControls(leftPane: HTMLElement): HTMLElement {
+function createControls(leftPane: HTMLElement, config: GridConfig): HTMLElement {
   const controlsContainer = document.createElement("div")
-
-  // Track current configuration
-  const config: GridConfig = {
-    orientation: "edge_up",
-    regionType: "rectangular",
-    rectWidth: 7,
-    rectHeight: 10,
-    rectStartsWide: true,
-    hexRadius: 5,
-    debugHover: false
-  }
 
   // Helper function to re-render grid
   const updateGrid = () => {
@@ -371,13 +410,24 @@ function main() {
     rectHeight: 10,
     rectStartsWide: true,
     hexRadius: 5,
-    debugHover: false
+    debugHover: false,
+    hexElements: new FLocMap<number>()
   }
+
+  // Add some test elements to hexagons
+  // For edge_up rectangular region starting at (0,0): column 0 has y=0, column 1 has y=-1
+  initialConfig.hexElements.setLoc(new FLoc(0, 0), 3)
+  initialConfig.hexElements.setLoc(new FLoc(1, 0), 1)
+  initialConfig.hexElements.setLoc(new FLoc(2, 0), 6)
+  initialConfig.hexElements.setLoc(new FLoc(3, 0), 4)
+  initialConfig.hexElements.setLoc(new FLoc(9, -1), 2)
+  initialConfig.hexElements.setLoc(new FLoc(8, -1), 5)
+
   renderGrid(leftPane, initialConfig)
 
   // Create and add controls to right pane
   rightPane.innerHTML = ""
-  const controls = createControls(leftPane)
+  const controls = createControls(leftPane, initialConfig)
   rightPane.appendChild(controls)
 }
 

@@ -81,6 +81,16 @@ body {
   white-space: nowrap;
 }
 
+/* Hex element (orange square) */
+.hex-element {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: orange;
+  z-index: 3;
+  pointer-events: none;
+}
+
 /* Label styling */
 .right-pane label {
   display: block;
