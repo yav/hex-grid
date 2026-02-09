@@ -1,5 +1,4 @@
-import { renderGrid, type GridConfig, type Item, ITEM_TYPES, createItem } from "./grid-renderer.ts"
-import { FLoc } from "./coord.ts"
+import { renderGrid, type GridConfig, type Item, ITEM_TYPES } from "./grid-renderer.ts" 
 import { FLocMap, ELocMap, VLocMap } from "./loc-map.ts"
 
 function createDebugHoverControl(config: GridConfig, updateGrid: () => void): HTMLElement {
