@@ -5,6 +5,36 @@ import { RectangularRegion, HexagonalRegion, Region } from "./region.ts"
 import { FLocMap, ELocMap, VLocMap, type LocMap } from "./loc-map.ts"
 import type { Orientation } from "./coord.ts"
 
+// Item type system for supporting different colored boxes on the grid
+export interface ItemType {
+  id: string
+  color: string
+  displayName: string
+}
+
+export interface Item {
+  type: ItemType
+  id: number  // Unique identifier for this item
+}
+
+// Counter for generating unique item IDs
+let nextItemId = 0
+
+export function createItem(type: ItemType): Item {
+  return {
+    type,
+    id: nextItemId++
+  }
+}
+
+export const ITEM_TYPES: ItemType[] = [
+  { id: "orange", color: "orange", displayName: "Orange" },
+  { id: "blue", color: "blue", displayName: "Blue" },
+  { id: "red", color: "red", displayName: "Red" },
+  { id: "pink", color: "pink", displayName: "Pink" },
+  { id: "purple", color: "purple", displayName: "Purple" },
+]
+
 export interface GridConfig {
   orientation: Orientation
   regionType: "rectangular" | "hexagonal"
@@ -13,10 +43,11 @@ export interface GridConfig {
   rectStartsWide: boolean
   hexRadius: number
   debugHover: boolean
-  hexElements: FLocMap<number> // Maps hexagon locations to element counts (0-6)
-  edgeElements: ELocMap<number> // Maps edge locations to element counts (0-1)
-  vertexElements: VLocMap<number> // Maps vertex locations to element counts (0-1)
+  hexElements: FLocMap<Item[]> // Maps hexagon locations to arrays of items
+  edgeElements: ELocMap<Item[]> // Maps edge locations to arrays of items
+  vertexElements: VLocMap<Item[]> // Maps vertex locations to arrays of items
   editMode: "none" | "add" | "remove"
+  selectedItemType: ItemType // Currently selected item type for add mode
 }
 
 export function renderGrid(leftPane: HTMLElement, config: GridConfig) {
@@ -137,7 +168,7 @@ function addDebugHover<T extends { toString(): string }>(
  * Encapsulates all the type-specific rendering behavior and data access needed to
  * render a single location and its associated game elements.
  */
-export interface LocationRenderer<T extends { toString(): string }, M extends LocMap<T, number>> {
+export interface LocationRenderer<T extends { toString(): string }, M extends LocMap<T, Item[]>> {
   /** Creates the visual shape element for this location type */
   createShape(grid: Grid, loc: T): HTMLElement
   /** Background color for this location type */
@@ -155,7 +186,7 @@ export interface LocationRenderer<T extends { toString(): string }, M extends Lo
 }
 
 /** Renderer for hexagon (face) locations - green hexagons that can hold up to 6 elements */
-const hexRenderer: LocationRenderer<FLoc, FLocMap<number>> = {
+const hexRenderer: LocationRenderer<FLoc, FLocMap<Item[]>> = {
   createShape: (grid: Grid, loc: FLoc) => newHexShape(grid, loc),
   backgroundColor: "green",
   zIndex: "0",
@@ -180,7 +211,7 @@ const hexRenderer: LocationRenderer<FLoc, FLocMap<number>> = {
 }
 
 /** Renderer for edge locations - black edges that can hold 1 element */
-const edgeRenderer: LocationRenderer<ELoc, ELocMap<number>> = {
+const edgeRenderer: LocationRenderer<ELoc, ELocMap<Item[]>> = {
   createShape: (grid: Grid, loc: ELoc) => newEdgeShape(grid, loc),
   backgroundColor: "black",
   zIndex: "1",
@@ -191,7 +222,7 @@ const edgeRenderer: LocationRenderer<ELoc, ELocMap<number>> = {
 }
 
 /** Renderer for vertex locations - yellow circles that can hold 1 element */
-const vertexRenderer: LocationRenderer<VLoc, VLocMap<number>> = {
+const vertexRenderer: LocationRenderer<VLoc, VLocMap<Item[]>> = {
   createShape: (grid: Grid, loc: VLoc) => newVertexShapeCirc(grid, loc),
   backgroundColor: "yellow",
   zIndex: "2",
@@ -226,7 +257,7 @@ interface RenderContext {
  * - Adding interaction handlers (click, hover)
  * - Rendering game elements at the location
  */
-function renderLocation<T extends { toString(): string }, M extends LocMap<T, number>>(
+function renderLocation<T extends { toString(): string }, M extends LocMap<T, Item[]>>(
   ctx: RenderContext,
   loc: T,
   renderer: LocationRenderer<T, M>
@@ -256,9 +287,9 @@ function renderLocation<T extends { toString(): string }, M extends LocMap<T, nu
   // Add click handler for adding entities
   if (config.editMode === "add") {
     shape.addEventListener("click", () => {
-      const currentCount = elementMap.getLoc(loc) || 0
-      if (currentCount < renderer.maxElements) {
-        elementMap.setLoc(loc, currentCount + 1)
+      const items = elementMap.getLoc(loc) || []
+      if (items.length < renderer.maxElements) {
+        elementMap.setLoc(loc, [...items, createItem(config.selectedItemType)])
         renderGrid(leftPane, config)
       }
     })
@@ -272,14 +303,15 @@ function renderLocation<T extends { toString(): string }, M extends LocMap<T, nu
   gridContainer.append(shape)
 
   // Render elements at this location
-  const elementCount = elementMap.getLoc(loc) || 0
-  if (elementCount > 0) {
-    const positions = renderer.getElementPositions(elementCount)
+  const items = elementMap.getLoc(loc) || []
+  if (items.length > 0) {
+    const positions = renderer.getElementPositions(items.length)
     const getPosition = renderer.getPositionFn()
     const [centerX, centerY] = getPosition(grid, loc)
     const elementSize = 8
 
-    for (const [dx, dy] of positions) {
+    items.forEach((item, i) => {
+      const [dx, dy] = positions[i]
       const x = centerX + dx + offsetX
       const y = centerY + dy + offsetY
 
@@ -287,22 +319,25 @@ function renderLocation<T extends { toString(): string }, M extends LocMap<T, nu
       element.className = "hex-element"
       element.style.left = `${x - elementSize / 2}px`
       element.style.top = `${y - elementSize / 2}px`
+      element.style.backgroundColor = item.type.color
+      element.style.border = "1px solid #333"
 
       // Add cursor style and click handler for remove mode
       if (config.editMode === "remove") {
         element.style.cursor = "not-allowed"
         element.style.pointerEvents = "auto"
+        // Capture the item's unique ID
+        const itemId = item.id
         element.addEventListener("click", (e) => {
           e.stopPropagation()
-          const currentCount = elementMap.getLoc(loc) || 0
-          if (currentCount > 0) {
-            elementMap.setLoc(loc, currentCount - 1)
-            renderGrid(leftPane, config)
-          }
+          const currentItems = elementMap.getLoc(loc) || []
+          // Remove the item with the matching ID
+          elementMap.setLoc(loc, currentItems.filter(it => it.id !== itemId))
+          renderGrid(leftPane, config)
         })
       }
 
       gridContainer.append(element)
-    }
+    })
   }
 }

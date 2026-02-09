@@ -1,4 +1,4 @@
-import { renderGrid, type GridConfig } from "./grid-renderer.ts"
+import { renderGrid, type GridConfig, type Item, ITEM_TYPES, createItem } from "./grid-renderer.ts"
 import { FLoc } from "./coord.ts"
 import { FLocMap, ELocMap, VLocMap } from "./loc-map.ts"
 
@@ -94,6 +94,54 @@ function createEditModeControl(config: GridConfig, updateGrid: () => void): HTML
   removeRadio.addEventListener("change", () => updateEditMode("remove"))
 
   return editSection
+}
+
+function createItemTypeSelector(config: GridConfig, updateGrid: () => void): HTMLElement {
+  const container = document.createElement("div")
+  container.className = "control-section"
+  container.style.marginBottom = "10px"
+
+  const label = document.createElement("label")
+  label.textContent = "Item Type:"
+  container.appendChild(label)
+
+  const radioGroup = document.createElement("div")
+  radioGroup.style.marginTop = "8px"
+
+  for (const itemType of ITEM_TYPES) {
+    const radioLabel = document.createElement("label")
+    radioLabel.style.display = "block"
+    radioLabel.style.marginBottom = "3px"
+    radioLabel.style.cursor = "pointer"
+
+    const radio = document.createElement("input")
+    radio.type = "radio"
+    radio.name = "itemType"
+    radio.value = itemType.id
+    radio.checked = config.selectedItemType.id === itemType.id
+
+    const colorIndicator = document.createElement("span")
+    colorIndicator.className = "item-type-indicator"
+    colorIndicator.style.backgroundColor = itemType.color
+
+    radio.addEventListener("change", () => {
+      config.selectedItemType = itemType
+      updateGrid()
+    })
+
+    radioLabel.appendChild(radio)
+    radioLabel.appendChild(document.createTextNode(" "))
+    radioLabel.appendChild(colorIndicator)
+    radioLabel.appendChild(document.createTextNode(itemType.displayName))
+    radioGroup.appendChild(radioLabel)
+  }
+
+  container.appendChild(radioGroup)
+
+  // Show only when in add mode
+  container.style.display = config.editMode === "add" ? "block" : "none"
+
+  return container
 }
 
 function createOrientationControl(config: GridConfig, updateGrid: () => void): HTMLElement {
@@ -259,7 +307,22 @@ function createControls(leftPane: HTMLElement, config: GridConfig): HTMLElement 
   controlsContainer.appendChild(topRow)
 
   controlsContainer.appendChild(createRegionControl(config, updateGrid))
-  controlsContainer.appendChild(createEditModeControl(config, updateGrid))
+
+  // Create edit mode control
+  const editModeControl = createEditModeControl(config, updateGrid)
+  controlsContainer.appendChild(editModeControl)
+
+  // Create item type selector
+  const itemTypeSelector = createItemTypeSelector(config, updateGrid)
+  controlsContainer.appendChild(itemTypeSelector)
+
+  // Update edit mode control to toggle type selector visibility
+  const editModeRadios = editModeControl.querySelectorAll('input[name="edit-mode"]')
+  editModeRadios.forEach((radio) => {
+    radio.addEventListener("change", () => {
+      itemTypeSelector.style.display = config.editMode === "add" ? "block" : "none"
+    })
+  })
 
   return controlsContainer
 }
@@ -279,21 +342,12 @@ function main() {
     rectStartsWide: true,
     hexRadius: 5,
     debugHover: false,
-    hexElements: new FLocMap<number>(),
-    edgeElements: new ELocMap<number>(),
-    vertexElements: new VLocMap<number>(),
-    editMode: "none"
+    hexElements: new FLocMap<Item[]>(),
+    edgeElements: new ELocMap<Item[]>(),
+    vertexElements: new VLocMap<Item[]>(),
+    editMode: "none",
+    selectedItemType: ITEM_TYPES[0]  // Default to orange
   }
-
-  // Add some test elements to hexagons
-  // For edge_up rectangular region starting at (0,0): column 0 has y=0, column 1 has y=-1
-  initialConfig.hexElements.setLoc(new FLoc(0, 0), 3)
-  initialConfig.hexElements.setLoc(new FLoc(1, 0), 1)
-  initialConfig.hexElements.setLoc(new FLoc(2, 0), 6)
-  initialConfig.hexElements.setLoc(new FLoc(3, 0), 4)
-  initialConfig.hexElements.setLoc(new FLoc(9, -1), 2)
-  initialConfig.hexElements.setLoc(new FLoc(8, -1), 5)
-
   renderGrid(leftPane, initialConfig)
 
   // Create and add controls to right pane
