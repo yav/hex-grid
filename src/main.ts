@@ -19,9 +19,13 @@ interface GridConfig {
   editMode: "none" | "add" | "remove"
 }
 
-function addDebugHover(
+/**
+ * Adds debug hover functionality to an element, displaying the location's string
+ * representation in a tooltip when the user hovers over the element.
+ */
+function addDebugHover<T extends { toString(): string }>(
   element: HTMLElement,
-  location: FLoc | ELoc | VLoc,
+  location: T,
   debugTooltip: HTMLDivElement,
   leftPane: HTMLElement
 ) {
@@ -40,32 +44,11 @@ function addDebugHover(
   })
 }
 
-function createElementBox(
-  x: number,
-  y: number,
-  config: GridConfig,
-  onRemove: () => void
-): HTMLElement {
-  const elementSize = 8
-  const element = document.createElement("div")
-  element.className = "hex-element"
-  element.style.left = `${x - elementSize / 2}px`
-  element.style.top = `${y - elementSize / 2}px`
-
-  // Add cursor style and click handler for remove mode
-  if (config.editMode === "remove") {
-    element.style.cursor = "not-allowed"
-    element.style.pointerEvents = "auto"
-    element.addEventListener("click", (e) => {
-      e.stopPropagation()
-      onRemove()
-    })
-  }
-
-  return element
-}
-
-function createElements<T extends FLoc | ELoc | VLoc>(
+/**
+ * Creates game element boxes (small squares) at specified positions relative to a location.
+ * Used to render resource tokens, pieces, or other game elements on hexes, edges, and vertices.
+ */
+function createElements<T>(
   grid: Grid,
   loc: T,
   positions: [number, number][],
@@ -77,32 +60,196 @@ function createElements<T extends FLoc | ELoc | VLoc>(
 ): HTMLElement[] {
   const elements: HTMLElement[] = []
   const [centerX, centerY] = getPosition(grid, loc)
+  const elementSize = 8
 
   for (const [dx, dy] of positions) {
-    const element = createElementBox(
-      centerX + dx + offsetX,
-      centerY + dy + offsetY,
-      config,
-      onRemove
-    )
+    const x = centerX + dx + offsetX
+    const y = centerY + dy + offsetY
+
+    const element = document.createElement("div")
+    element.className = "hex-element"
+    element.style.left = `${x - elementSize / 2}px`
+    element.style.top = `${y - elementSize / 2}px`
+
+    // Add cursor style and click handler for remove mode
+    if (config.editMode === "remove") {
+      element.style.cursor = "not-allowed"
+      element.style.pointerEvents = "auto"
+      element.addEventListener("click", (e) => {
+        e.stopPropagation()
+        onRemove()
+      })
+    }
+
     elements.push(element)
   }
 
   return elements
 }
 
-// Position patterns for different hexagon element counts
-// Positions are relative offsets from center
-// Consistent spacing: 12px between element centers (4px gap between edges)
-const HEX_ELEMENT_POSITIONS: [number, number][][] = [
-  [], // 0 elements
-  [[0, 0]], // 1 element: center
-  [[-6, 0], [6, 0]], // 2 elements: horizontal line, 12px spacing
-  [[-12, 0], [0, 0], [12, 0]], // 3 elements: horizontal line, 12px spacing
-  [[-6, -6], [6, -6], [-6, 6], [6, 6]], // 4 elements: 2x2 grid, 12px spacing
-  [[-12, -6], [0, -6], [12, -6], [-6, 6], [6, 6]], // 5 elements: 3 top, 2 bottom, 12px spacing
-  [[-12, -6], [0, -6], [12, -6], [-12, 6], [0, 6], [12, 6]], // 6 elements: 2x3 grid, 12px spacing
-]
+/**
+ * Interface for rendering different types of grid locations (hexes, edges, vertices).
+ * Encapsulates all the type-specific rendering behavior and data access needed to
+ * render a single location and its associated game elements.
+ */
+interface LocationRenderer<T extends { toString(): string }, M extends LocMap<T, number>> {
+  /** Creates the visual shape element for this location type */
+  createShape(grid: Grid, loc: T): HTMLElement
+  /** Background color for this location type */
+  backgroundColor: string
+  /** Z-index for layering (hexes < edges < vertices) */
+  zIndex: string
+  /** Maximum number of game elements that can be placed at this location */
+  maxElements: number
+  /** Gets the element map for tracking game elements at locations of this type */
+  getElementMap(config: GridConfig): M
+  /** Gets the relative positions for arranging multiple game elements */
+  getElementPositions(elementCount: number): [number, number][]
+  /** Gets the function to calculate the screen position of this location */
+  getPositionFn(): (g: Grid, l: T) => [number, number]
+}
+
+/** Renderer for hexagon (face) locations - green hexagons that can hold up to 6 elements */
+const hexRenderer: LocationRenderer<FLoc, FLocMap<number>> = {
+  createShape: (grid: Grid, loc: FLoc) => newHexShape(grid, loc),
+  backgroundColor: "green",
+  zIndex: "0",
+  maxElements: 6,
+  getElementMap: (config: GridConfig) => config.hexElements,
+  getElementPositions: (elementCount: number) => {
+    // Position patterns for different hexagon element counts
+    // Positions are relative offsets from center
+    // Consistent spacing: 12px between element centers (4px gap between edges)
+    const positions: [number, number][][] = [
+      [], // 0 elements
+      [[0, 0]], // 1 element: center
+      [[-6, 0], [6, 0]], // 2 elements: horizontal line, 12px spacing
+      [[-12, 0], [0, 0], [12, 0]], // 3 elements: horizontal line, 12px spacing
+      [[-6, -6], [6, -6], [-6, 6], [6, 6]], // 4 elements: 2x2 grid, 12px spacing
+      [[-12, -6], [0, -6], [12, -6], [-6, 6], [6, 6]], // 5 elements: 3 top, 2 bottom, 12px spacing
+      [[-12, -6], [0, -6], [12, -6], [-12, 6], [0, 6], [12, 6]], // 6 elements: 2x3 grid, 12px spacing
+    ]
+    return positions[elementCount] || []
+  },
+  getPositionFn: () => (g: Grid, l: FLoc) => g.faceLoc(l)
+}
+
+/** Renderer for edge locations - black edges that can hold 1 element */
+const edgeRenderer: LocationRenderer<ELoc, ELocMap<number>> = {
+  createShape: (grid: Grid, loc: ELoc) => newEdgeShape(grid, loc),
+  backgroundColor: "black",
+  zIndex: "1",
+  maxElements: 1,
+  getElementMap: (config: GridConfig) => config.edgeElements,
+  getElementPositions: () => [[0, 0]],
+  getPositionFn: () => (g: Grid, l: ELoc) => g.edgeLoc(l)
+}
+
+/** Renderer for vertex locations - yellow circles that can hold 1 element */
+const vertexRenderer: LocationRenderer<VLoc, VLocMap<number>> = {
+  createShape: (grid: Grid, loc: VLoc) => newVertexShapeCirc(grid, loc),
+  backgroundColor: "yellow",
+  zIndex: "2",
+  maxElements: 1,
+  getElementMap: (config: GridConfig) => config.vertexElements,
+  getElementPositions: () => [[0, 0]],
+  getPositionFn: () => (g: Grid, l: VLoc) => g.vertexLoc(l)
+}
+
+/**
+ * Shared rendering context passed to all location rendering calls.
+ * Groups together all the common parameters needed for rendering to avoid
+ * passing many individual parameters.
+ */
+interface RenderContext {
+  grid: Grid
+  config: GridConfig
+  offsetX: number
+  offsetY: number
+  gridContainer: HTMLElement
+  leftPane: HTMLElement
+  debugTooltip: HTMLDivElement | null
+}
+
+/**
+ * Renders a single grid location (hex, edge, or vertex) along with any game elements
+ * placed at that location. Uses the provided renderer to handle type-specific behavior.
+ *
+ * This is the main rendering function that combines:
+ * - Creating and styling the location shape
+ * - Positioning it with offsets
+ * - Adding interaction handlers (click, hover)
+ * - Rendering game elements at the location
+ */
+function renderLocation<T extends { toString(): string }, M extends LocMap<T, number>>(
+  ctx: RenderContext,
+  loc: T,
+  renderer: LocationRenderer<T, M>
+) {
+  const { grid, config, offsetX, offsetY, gridContainer, leftPane, debugTooltip } = ctx
+  const shape = renderer.createShape(grid, loc)
+  shape.style.backgroundColor = renderer.backgroundColor
+  shape.style.zIndex = renderer.zIndex
+
+  // Apply offset to position
+  const currentLeft = parseFloat(shape.style.left)
+  const currentTop = parseFloat(shape.style.top)
+  shape.style.left = `${currentLeft + offsetX}px`
+  shape.style.top = `${currentTop + offsetY}px`
+
+  // Add cursor style based on edit mode
+  if (config.editMode === "add") {
+    shape.style.cursor = "copy"
+  } else if (config.editMode === "remove") {
+    shape.style.cursor = "default"
+  } else {
+    shape.style.cursor = "default"
+  }
+
+  const elementMap = renderer.getElementMap(config)
+
+  // Add click handler for adding entities
+  if (config.editMode === "add") {
+    shape.addEventListener("click", () => {
+      const currentCount = elementMap.getLoc(loc) || 0
+      if (currentCount < renderer.maxElements) {
+        elementMap.setLoc(loc, currentCount + 1)
+        renderGrid(leftPane, config)
+      }
+    })
+  }
+
+  // Add hover debug info
+  if (config.debugHover && debugTooltip) {
+    addDebugHover(shape, loc, debugTooltip, leftPane)
+  }
+
+  gridContainer.append(shape)
+
+  // Render elements at this location
+  const elementCount = elementMap.getLoc(loc) || 0
+  if (elementCount > 0) {
+    const elements = createElements(
+      grid,
+      loc,
+      renderer.getElementPositions(elementCount),
+      offsetX,
+      offsetY,
+      config,
+      renderer.getPositionFn(),
+      () => {
+        const currentCount = elementMap.getLoc(loc) || 0
+        if (currentCount > 0) {
+          elementMap.setLoc(loc, currentCount - 1)
+          renderGrid(leftPane, config)
+        }
+      }
+    )
+    for (const element of elements) {
+      gridContainer.append(element)
+    }
+  }
+}
 
 function renderGrid(leftPane: HTMLElement, config: GridConfig) {
   // Clear the left pane and set up for absolute positioning
@@ -165,187 +312,30 @@ function renderGrid(leftPane: HTMLElement, config: GridConfig) {
   gridContainer.style.height = `${maxY - minY + 2 * padding}px`
   leftPane.append(gridContainer)
 
+  // Create render context
+  const ctx: RenderContext = {
+    grid,
+    config,
+    offsetX,
+    offsetY,
+    gridContainer,
+    leftPane,
+    debugTooltip
+  }
+
   // Render all hexagons (faces) in green
   for (const loc of region.faces()) {
-    const hex = newHexShape(grid, loc)
-    hex.style.backgroundColor = "green"
-    hex.style.zIndex = "0"
-    // Apply offset to position
-    const currentLeft = parseFloat(hex.style.left)
-    const currentTop = parseFloat(hex.style.top)
-    hex.style.left = `${currentLeft + offsetX}px`
-    hex.style.top = `${currentTop + offsetY}px`
-
-    // Add cursor style based on edit mode
-    if (config.editMode === "add") {
-      hex.style.cursor = "copy"
-    } else if (config.editMode === "remove") {
-      hex.style.cursor = "default"
-    } else {
-      hex.style.cursor = "default"
-    }
-
-    // Add click handler for adding entities
-    if (config.editMode === "add") {
-      hex.addEventListener("click", () => {
-        const currentCount = config.hexElements.getLoc(loc) || 0
-        if (currentCount < 6) {
-          config.hexElements.setLoc(loc, currentCount + 1)
-          renderGrid(leftPane, config)
-        }
-      })
-    }
-
-    // Add hover debug info
-    if (config.debugHover && debugTooltip) {
-      addDebugHover(hex, loc, debugTooltip, leftPane)
-    }
-
-    gridContainer.append(hex)
-
-    // Render elements in this hexagon
-    const elementCount = config.hexElements.getLoc(loc) || 0
-    if (elementCount > 0 && elementCount <= 6) {
-      const elements = createElements(
-        grid,
-        loc,
-        HEX_ELEMENT_POSITIONS[elementCount],
-        offsetX,
-        offsetY,
-        config,
-        (g, l) => g.faceLoc(l),
-        () => {
-          const currentCount = config.hexElements.getLoc(loc) || 0
-          if (currentCount > 0) {
-            config.hexElements.setLoc(loc, currentCount - 1)
-            renderGrid(leftPane, config)
-          }
-        }
-      )
-      for (const element of elements) {
-        gridContainer.append(element)
-      }
-    }
+    renderLocation(ctx, loc, hexRenderer)
   }
 
   // Render all edges in black
   for (const edge of region.edges()) {
-    const edgeShape = newEdgeShape(grid, edge)
-    edgeShape.style.backgroundColor = "black"
-    edgeShape.style.zIndex = "1"
-    // Apply offset to position
-    const currentLeft = parseFloat(edgeShape.style.left)
-    const currentTop = parseFloat(edgeShape.style.top)
-    edgeShape.style.left = `${currentLeft + offsetX}px`
-    edgeShape.style.top = `${currentTop + offsetY}px`
-
-    // Add cursor style based on edit mode
-    if (config.editMode === "add") {
-      edgeShape.style.cursor = "copy"
-    } else if (config.editMode === "remove") {
-      edgeShape.style.cursor = "default"
-    } else {
-      edgeShape.style.cursor = "default"
-    }
-
-    // Add click handler for adding entities
-    if (config.editMode === "add") {
-      edgeShape.addEventListener("click", () => {
-        const currentCount = config.edgeElements.getLoc(edge) || 0
-        if (currentCount < 1) {
-          config.edgeElements.setLoc(edge, 1)
-          renderGrid(leftPane, config)
-        }
-      })
-    }
-
-    // Add hover debug info
-    if (config.debugHover && debugTooltip) {
-      addDebugHover(edgeShape, edge, debugTooltip, leftPane)
-    }
-
-    gridContainer.append(edgeShape)
-
-    // Render element on this edge if present
-    const hasEdgeElement = (config.edgeElements.getLoc(edge) || 0) > 0
-    if (hasEdgeElement) {
-      const elements = createElements(
-        grid,
-        edge,
-        [[0, 0]], // Single element at center
-        offsetX,
-        offsetY,
-        config,
-        (g, l) => g.edgeLoc(l),
-        () => {
-          config.edgeElements.setLoc(edge, 0)
-          renderGrid(leftPane, config)
-        }
-      )
-      for (const element of elements) {
-        gridContainer.append(element)
-      }
-    }
+    renderLocation(ctx, edge, edgeRenderer)
   }
 
   // Render all vertices in yellow
   for (const vertex of region.vertices()) {
-    const vertexShape = newVertexShapeCirc(grid, vertex)
-    vertexShape.style.backgroundColor = "yellow"
-    vertexShape.style.zIndex = "2"
-    // Apply offset to position
-    const currentLeft = parseFloat(vertexShape.style.left)
-    const currentTop = parseFloat(vertexShape.style.top)
-    vertexShape.style.left = `${currentLeft + offsetX}px`
-    vertexShape.style.top = `${currentTop + offsetY}px`
-
-    // Add cursor style based on edit mode
-    if (config.editMode === "add") {
-      vertexShape.style.cursor = "copy"
-    } else if (config.editMode === "remove") {
-      vertexShape.style.cursor = "default"
-    } else {
-      vertexShape.style.cursor = "default"
-    }
-
-    // Add click handler for adding entities
-    if (config.editMode === "add") {
-      vertexShape.addEventListener("click", () => {
-        const currentCount = config.vertexElements.getLoc(vertex) || 0
-        if (currentCount < 1) {
-          config.vertexElements.setLoc(vertex, 1)
-          renderGrid(leftPane, config)
-        }
-      })
-    }
-
-    // Add hover debug info
-    if (config.debugHover && debugTooltip) {
-      addDebugHover(vertexShape, vertex, debugTooltip, leftPane)
-    }
-
-    gridContainer.append(vertexShape)
-
-    // Render element on this vertex if present
-    const hasVertexElement = (config.vertexElements.getLoc(vertex) || 0) > 0
-    if (hasVertexElement) {
-      const elements = createElements(
-        grid,
-        vertex,
-        [[0, 0]], // Single element at center
-        offsetX,
-        offsetY,
-        config,
-        (g, l) => g.vertexLoc(l),
-        () => {
-          config.vertexElements.setLoc(vertex, 0)
-          renderGrid(leftPane, config)
-        }
-      )
-      for (const element of elements) {
-        gridContainer.append(element)
-      }
-    }
+    renderLocation(ctx, vertex, vertexRenderer)
   }
 }
 
