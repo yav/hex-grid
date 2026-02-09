@@ -5,6 +5,51 @@ import { RectangularRegion, HexagonalRegion, Region } from "./region.ts"
 import { FLocMap, ELocMap, VLocMap, type LocMap } from "./loc-map.ts"
 import type { Orientation } from "./coord.ts"
 
+// Color palette system for theming
+export interface ColorPalette {
+  name: string
+  hexagonBackground: string
+  edgeBackground: string
+  vertexBackground: string
+  itemTypes: {
+    alpha: { color: string, displayName: string }
+    beta: { color: string, displayName: string }
+    gamma: { color: string, displayName: string }
+    delta: { color: string, displayName: string }
+    epsilon: { color: string, displayName: string }
+  }
+}
+
+// Warm color palette (warm grid, cool items for contrast)
+export const WARM_PALETTE: ColorPalette = {
+  name: "Warm",
+  hexagonBackground: "#D7CCC8",  // Warm taupe gray
+  edgeBackground: "#5D4037",      // Rich brown
+  vertexBackground: "#FFB74D",    // Warm amber
+  itemTypes: {
+    alpha: { color: "#0277BD", displayName: "Ocean" },
+    beta: { color: "#00ACC1", displayName: "Cyan" },
+    gamma: { color: "#26A69A", displayName: "Teal" },
+    delta: { color: "#66BB6A", displayName: "Green" },
+    epsilon: { color: "#9CCC65", displayName: "Lime" },
+  }
+}
+
+// Cool color palette (cool grid, warm items for contrast)
+export const COOL_PALETTE: ColorPalette = {
+  name: "Cool",
+  hexagonBackground: "#E3F2FD",  // Light blue
+  edgeBackground: "#1565C0",      // Deep blue
+  vertexBackground: "#42A5F5",    // Bright blue
+  itemTypes: {
+    alpha: { color: "#D84315", displayName: "Terracotta" },
+    beta: { color: "#FFA726", displayName: "Golden Honey" },
+    gamma: { color: "#FF7043", displayName: "Coral" },
+    delta: { color: "#8D6E63", displayName: "Warm Taupe" },
+    epsilon: { color: "#FF6E40", displayName: "Burnt Sienna" },
+  }
+}
+
 // Item type system for supporting different colored boxes on the grid
 export interface ItemType {
   id: string
@@ -27,13 +72,18 @@ export function createItem(type: ItemType): Item {
   }
 }
 
-export const ITEM_TYPES: ItemType[] = [
-  { id: "orange", color: "orange", displayName: "Orange" },
-  { id: "blue", color: "blue", displayName: "Blue" },
-  { id: "red", color: "red", displayName: "Red" },
-  { id: "pink", color: "pink", displayName: "Pink" },
-  { id: "purple", color: "purple", displayName: "Purple" },
-]
+// Create item types from a color palette
+export function createItemTypesFromPalette(palette: ColorPalette): ItemType[] {
+  return [
+    { id: "alpha", color: palette.itemTypes.alpha.color, displayName: palette.itemTypes.alpha.displayName },
+    { id: "beta", color: palette.itemTypes.beta.color, displayName: palette.itemTypes.beta.displayName },
+    { id: "gamma", color: palette.itemTypes.gamma.color, displayName: palette.itemTypes.gamma.displayName },
+    { id: "delta", color: palette.itemTypes.delta.color, displayName: palette.itemTypes.delta.displayName },
+    { id: "epsilon", color: palette.itemTypes.epsilon.color, displayName: palette.itemTypes.epsilon.displayName },
+  ]
+}
+
+export const ITEM_TYPES: ItemType[] = createItemTypesFromPalette(WARM_PALETTE)
 
 export interface GridConfig {
   orientation: Orientation
@@ -48,6 +98,7 @@ export interface GridConfig {
   vertexElements: VLocMap<Item[]> // Maps vertex locations to arrays of items
   editMode: "none" | "add" | "remove"
   selectedItemType: ItemType // Currently selected item type for add mode
+  palette: ColorPalette // Color palette for theming
 }
 
 export function renderGrid(leftPane: HTMLElement, config: GridConfig) {
@@ -171,8 +222,8 @@ function addDebugHover<T extends { toString(): string }>(
 export interface LocationRenderer<T extends { toString(): string }, M extends LocMap<T, Item[]>> {
   /** Creates the visual shape element for this location type */
   createShape(grid: Grid, loc: T): HTMLElement
-  /** Background color for this location type */
-  backgroundColor: string
+  /** Gets the background color for this location type from the palette */
+  getBackgroundColor(config: GridConfig): string
   /** Z-index for layering (hexes < edges < vertices) */
   zIndex: string
   /** Maximum number of game elements that can be placed at this location */
@@ -185,10 +236,10 @@ export interface LocationRenderer<T extends { toString(): string }, M extends Lo
   getPositionFn(): (g: Grid, l: T) => [number, number]
 }
 
-/** Renderer for hexagon (face) locations - green hexagons that can hold up to 6 elements */
+/** Renderer for hexagon (face) locations - hexagons that can hold up to 6 elements */
 const hexRenderer: LocationRenderer<FLoc, FLocMap<Item[]>> = {
   createShape: (grid: Grid, loc: FLoc) => newHexShape(grid, loc),
-  backgroundColor: "green",
+  getBackgroundColor: (config: GridConfig) => config.palette.hexagonBackground,
   zIndex: "0",
   maxElements: 6,
   getElementMap: (config: GridConfig) => config.hexElements,
@@ -210,10 +261,10 @@ const hexRenderer: LocationRenderer<FLoc, FLocMap<Item[]>> = {
   getPositionFn: () => (g: Grid, l: FLoc) => g.faceLoc(l)
 }
 
-/** Renderer for edge locations - black edges that can hold 1 element */
+/** Renderer for edge locations - edges that can hold 1 element */
 const edgeRenderer: LocationRenderer<ELoc, ELocMap<Item[]>> = {
   createShape: (grid: Grid, loc: ELoc) => newEdgeShape(grid, loc),
-  backgroundColor: "black",
+  getBackgroundColor: (config: GridConfig) => config.palette.edgeBackground,
   zIndex: "1",
   maxElements: 1,
   getElementMap: (config: GridConfig) => config.edgeElements,
@@ -221,10 +272,10 @@ const edgeRenderer: LocationRenderer<ELoc, ELocMap<Item[]>> = {
   getPositionFn: () => (g: Grid, l: ELoc) => g.edgeLoc(l)
 }
 
-/** Renderer for vertex locations - yellow circles that can hold 1 element */
+/** Renderer for vertex locations - circles that can hold 1 element */
 const vertexRenderer: LocationRenderer<VLoc, VLocMap<Item[]>> = {
   createShape: (grid: Grid, loc: VLoc) => newVertexShapeCirc(grid, loc),
-  backgroundColor: "yellow",
+  getBackgroundColor: (config: GridConfig) => config.palette.vertexBackground,
   zIndex: "2",
   maxElements: 1,
   getElementMap: (config: GridConfig) => config.vertexElements,
@@ -264,7 +315,7 @@ function renderLocation<T extends { toString(): string }, M extends LocMap<T, It
 ) {
   const { grid, config, offsetX, offsetY, gridContainer, leftPane, debugTooltip } = ctx
   const shape = renderer.createShape(grid, loc)
-  shape.style.backgroundColor = renderer.backgroundColor
+  shape.style.backgroundColor = renderer.getBackgroundColor(config)
   shape.style.zIndex = renderer.zIndex
 
   // Apply offset to position
@@ -319,7 +370,10 @@ function renderLocation<T extends { toString(): string }, M extends LocMap<T, It
       element.className = "hex-element"
       element.style.left = `${x - elementSize / 2}px`
       element.style.top = `${y - elementSize / 2}px`
-      element.style.backgroundColor = item.type.color
+      // Look up color from current palette based on item type id
+      const currentItemTypes = createItemTypesFromPalette(config.palette)
+      const currentType = currentItemTypes.find(t => t.id === item.type.id)
+      element.style.backgroundColor = currentType ? currentType.color : item.type.color
       element.style.border = "1px solid #333"
 
       // Add cursor style and click handler for remove mode

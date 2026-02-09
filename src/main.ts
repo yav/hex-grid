@@ -1,5 +1,8 @@
-import { renderGrid, type GridConfig, type Item, ITEM_TYPES } from "./grid-renderer.ts" 
+import { renderGrid, type GridConfig, type Item, WARM_PALETTE, COOL_PALETTE, type ColorPalette, createItemTypesFromPalette } from "./grid-renderer.ts"
 import { FLocMap, ELocMap, VLocMap } from "./loc-map.ts"
+
+// Available color palettes
+const AVAILABLE_PALETTES: ColorPalette[] = [WARM_PALETTE, COOL_PALETTE]
 
 function createDebugHoverControl(config: GridConfig, updateGrid: () => void): HTMLElement {
   const debugSection = document.createElement("div")
@@ -107,7 +110,10 @@ function createItemTypeSelector(config: GridConfig, updateGrid: () => void): HTM
   const radioGroup = document.createElement("div")
   radioGroup.style.marginTop = "8px"
 
-  for (const itemType of ITEM_TYPES) {
+  // Generate item types from the current palette
+  const itemTypes = createItemTypesFromPalette(config.palette)
+
+  for (const itemType of itemTypes) {
     const radioLabel = document.createElement("label")
     radioLabel.style.display = "block"
     radioLabel.style.marginBottom = "3px"
@@ -166,6 +172,45 @@ function createOrientationControl(config: GridConfig, updateGrid: () => void): H
 
   orientationSection.appendChild(orientationLabel)
   return orientationSection
+}
+
+function createPaletteControl(config: GridConfig, updateGrid: () => void): HTMLElement {
+  const paletteSection = document.createElement("div")
+  paletteSection.className = "control-section"
+
+  const paletteLabel = document.createElement("label")
+  paletteLabel.textContent = "Color Palette:"
+
+  const paletteSelect = document.createElement("select")
+  paletteSelect.id = "palette-select"
+
+  // Create options for each available palette
+  for (const palette of AVAILABLE_PALETTES) {
+    const option = document.createElement("option")
+    option.value = palette.name
+    option.textContent = palette.name
+    option.selected = config.palette.name === palette.name
+    paletteSelect.appendChild(option)
+  }
+
+  paletteSelect.addEventListener("change", () => {
+    // Find the selected palette
+    const selectedPalette = AVAILABLE_PALETTES.find(p => p.name === paletteSelect.value)
+    if (selectedPalette) {
+      config.palette = selectedPalette
+      // Update the selected item type to use the new palette's colors
+      const newItemTypes = createItemTypesFromPalette(selectedPalette)
+      // Try to keep the same item type ID, or default to the first one
+      const matchingType = newItemTypes.find(it => it.id === config.selectedItemType.id)
+      config.selectedItemType = matchingType || newItemTypes[0]
+      updateGrid()
+    }
+  })
+
+  paletteSection.appendChild(paletteLabel)
+  paletteSection.appendChild(paletteSelect)
+
+  return paletteSection
 }
 
 function createRegionControl(config: GridConfig, updateGrid: () => void): HTMLElement {
@@ -290,12 +335,20 @@ function createRegionControl(config: GridConfig, updateGrid: () => void): HTMLEl
   return container
 }
 
-function createControls(leftPane: HTMLElement, config: GridConfig): HTMLElement {
+function createControls(leftPane: HTMLElement, rightPane: HTMLElement, config: GridConfig): HTMLElement {
   const controlsContainer = document.createElement("div")
 
-  // Helper function to re-render grid
+  // Helper function to re-render grid and controls
   const updateGrid = () => {
     renderGrid(leftPane, config)
+  }
+
+  const updateAll = () => {
+    renderGrid(leftPane, config)
+    // Recreate controls to reflect palette changes
+    rightPane.innerHTML = ""
+    const newControls = createControls(leftPane, rightPane, config)
+    rightPane.appendChild(newControls)
   }
 
   // Add controls - top row with orientation and debug hover
@@ -304,6 +357,9 @@ function createControls(leftPane: HTMLElement, config: GridConfig): HTMLElement 
   topRow.appendChild(createOrientationControl(config, updateGrid))
   topRow.appendChild(createDebugHoverControl(config, updateGrid))
   controlsContainer.appendChild(topRow)
+
+  // Add palette selector (use updateAll to regenerate controls when palette changes)
+  controlsContainer.appendChild(createPaletteControl(config, updateAll))
 
   controlsContainer.appendChild(createRegionControl(config, updateGrid))
 
@@ -345,13 +401,14 @@ function main() {
     edgeElements: new ELocMap<Item[]>(),
     vertexElements: new VLocMap<Item[]>(),
     editMode: "none",
-    selectedItemType: ITEM_TYPES[0]  // Default to orange
+    selectedItemType: createItemTypesFromPalette(WARM_PALETTE)[0],  // Default to first item type (alpha)
+    palette: WARM_PALETTE
   }
   renderGrid(leftPane, initialConfig)
 
   // Create and add controls to right pane
   rightPane.innerHTML = ""
-  const controls = createControls(leftPane, initialConfig)
+  const controls = createControls(leftPane, rightPane, initialConfig)
   rightPane.appendChild(controls)
 }
 
