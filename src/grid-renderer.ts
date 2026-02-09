@@ -360,6 +360,8 @@ function renderLocation<T extends { toString(): string }, M extends LocMap<T, It
     const getPosition = renderer.getPositionFn()
     const [centerX, centerY] = getPosition(grid, loc)
     const elementSize = 8
+    const borderWidth = 1
+    const totalSize = elementSize + 2 * borderWidth
 
     items.forEach((item, i) => {
       const [dx, dy] = positions[i]
@@ -368,8 +370,8 @@ function renderLocation<T extends { toString(): string }, M extends LocMap<T, It
 
       const element = document.createElement("div")
       element.className = "hex-element"
-      element.style.left = `${x - elementSize / 2}px`
-      element.style.top = `${y - elementSize / 2}px`
+      element.style.left = `${x - totalSize / 2}px`
+      element.style.top = `${y - totalSize / 2}px`
       // Look up color from current palette based on item type id
       const currentItemTypes = createItemTypesFromPalette(config.palette)
       const currentType = currentItemTypes.find(t => t.id === item.type.id)
