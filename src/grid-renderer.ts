@@ -27,11 +27,11 @@ export const WARM_PALETTE: ColorPalette = {
   edgeBackground: "#5D4037",      // Rich brown
   vertexBackground: "#FFB74D",    // Warm amber
   itemTypes: {
-    alpha: { color: "#0277BD", displayName: "Ocean" },
-    beta: { color: "#00ACC1", displayName: "Cyan" },
-    gamma: { color: "#26A69A", displayName: "Teal" },
-    delta: { color: "#66BB6A", displayName: "Green" },
-    epsilon: { color: "#9CCC65", displayName: "Lime" },
+    alpha: { color: "#01579B", displayName: "Ocean" },      // Very dark blue
+    beta: { color: "#0288D1", displayName: "Cyan" },        // Medium blue
+    gamma: { color: "#26A69A", displayName: "Teal" },       // Medium teal
+    delta: { color: "#81C784", displayName: "Green" },      // Light green
+    epsilon: { color: "#C5E1A5", displayName: "Lime" },     // Very light lime
   }
 }
 
@@ -42,11 +42,11 @@ export const COOL_PALETTE: ColorPalette = {
   edgeBackground: "#1565C0",      // Deep blue
   vertexBackground: "#42A5F5",    // Bright blue
   itemTypes: {
-    alpha: { color: "#D84315", displayName: "Terracotta" },
-    beta: { color: "#FFA726", displayName: "Golden Honey" },
-    gamma: { color: "#FF7043", displayName: "Coral" },
-    delta: { color: "#8D6E63", displayName: "Warm Taupe" },
-    epsilon: { color: "#FF6E40", displayName: "Burnt Sienna" },
+    alpha: { color: "#BF360C", displayName: "Terracotta" },      // Very dark red-orange
+    beta: { color: "#E65100", displayName: "Golden Honey" },     // Dark orange
+    gamma: { color: "#FF6F00", displayName: "Coral" },           // Medium amber
+    delta: { color: "#FFA726", displayName: "Warm Taupe" },      // Light orange
+    epsilon: { color: "#FFD54F", displayName: "Burnt Sienna" },  // Very light yellow
   }
 }
 
