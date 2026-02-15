@@ -24,6 +24,8 @@ export {
   FilteredLocMap,
 } from "./loc-map.ts"
 
+export type { LocMap } from "./loc-map.ts"
+
 // Region types
 export {
   Region,
