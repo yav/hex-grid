@@ -168,6 +168,42 @@ export class RectangularRegion extends Region {
 }
 
 /**
+ * A region defined by an explicit set of faces.
+ * Uses FLocMap for efficient membership testing.
+ */
+export class SetRegion extends Region {
+  private faceSet: FLocMap<boolean>
+  private faceList: FLoc[]
+
+  /**
+   * Creates a region from an explicit list of faces.
+   * @param faces Array of face locations that define the region.
+   */
+  constructor(faces: FLoc[]) {
+    super()
+    this.faceSet = new FLocMap<boolean>()
+    this.faceList = []
+
+    for (const face of faces) {
+      this.faceSet.setLoc(face, true)
+      this.faceList.push(face)
+    }
+  }
+
+  containsFace(face: FLoc): boolean {
+    return this.faceSet.getLoc(face) !== null
+  }
+
+  /**
+   * Iterates over all faces in the region.
+   * Traversal order: the same order as the faces were provided in the constructor.
+   */
+  *faces(): Generator<FLoc> {
+    yield* this.faceList
+  }
+}
+
+/**
  * A hexagonal region centered on a face with a given radius.
  * Includes all faces within the given distance from the center.
  */

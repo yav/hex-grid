@@ -31,6 +31,7 @@ export {
   Region,
   RectangularRegion,
   HexagonalRegion,
+  SetRegion,
 } from "./region.ts"
 
 // Shape rendering utilities
